@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AI Nieuws — Radio Studio 2030</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<script src="js/storage.js"></script>
+<script src="js/shell.js"></script>
+<script src="js/audio-engine.js"></script>
+<script>
+const content = rsInitPage('news.html', 'AI Radio Nieuws', 'Genereer een nieuwsbulletin en laat het voorlezen');
+content.innerHTML = `
+  <div class="grid" style="grid-template-columns:1fr 1.3fr;">
+    <div class="panel">
+      <div class="panel-head"><h3>Instellingen</h3></div>
+      <div class="field">
+        <label>Stijl</label>
+        <select id="style">
+          <option value="kort">Kort bulletin</option>
+          <option value="normaal" selected>Normaal bulletin</option>
+          <option value="uitgebreid">Uitgebreid bulletin</option>
+          <option value="breaking">Breaking news</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Categorie</label>
+        <select id="category">
+          <option value="algemeen">Algemeen</option>
+          <option value="binnenland">Binnenland</option>
+          <option value="buitenland">Buitenland</option>
+          <option value="sport">Sport</option>
+          <option value="tech">Technologie</option>
+        </select>
+      </div>
+      <button class="btn btn-primary btn-lg" id="genBtn" style="width:100%;">🤖 Genereer nieuws</button>
+      <div class="hint" id="statusHint" style="margin-top:10px;"></div>
+      <div class="divider"></div>
+      <div class="hint">Bronnen en AI-model worden ingesteld via de backend (environment variables). Zonder API-sleutels wordt demo-data gebruikt.</div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head"><h3>Script</h3><span class="fill"></span>
+        <button class="btn btn-sm" id="ttsBtn" disabled>🔊 Genereer audio</button>
+      </div>
+      <textarea id="script" placeholder="Klik op 'Genereer nieuws' om een script te maken..."></textarea>
+      <audio id="player" controls style="width:100%; margin-top:14px; display:none;"></audio>
+    </div>
+  </div>
+
+  <div class="panel" style="margin-top:20px;">
+    <div class="panel-head"><h3>Actuele bronartikelen</h3></div>
+    <div id="sources"><div class="hint">Nog geen artikelen opgehaald.</div></div>
+  </div>
+`;
+
+const genBtn = document.getElementById('genBtn');
+const scriptEl = document.getElementById('script');
+const ttsBtn = document.getElementById('ttsBtn');
+const statusHint = document.getElementById('statusHint');
+
+genBtn.onclick = async () => {
+  genBtn.disabled = true; statusHint.textContent = 'Nieuws ophalen...';
+  try {
+    const newsRes = await fetch(`/api/news?category=${document.getElementById('category').value}`);
+    const news = await newsRes.json();
+    document.getElementById('sources').innerHTML = (news.articles || []).map(a => `
+      <div class="queue-item" style="cursor:default;">
+        <div class="meta"><div class="t">${a.title}</div><div class="a">${a.source || ''}</div></div>
+      </div>`).join('') || '<div class="hint">Geen artikelen gevonden.</div>';
+
+    statusHint.textContent = 'Script genereren...';
+    const scriptRes = await fetch('/api/ai/script', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ type: 'news', style: document.getElementById('style').value, articles: news.articles || [] })
+    });
+    const scriptData = await scriptRes.json();
+    scriptEl.value = scriptData.script || '';
+    ttsBtn.disabled = false;
+    statusHint.textContent = news.demo ? 'Demo-data gebruikt (geen nieuws-API geconfigureerd).' : 'Klaar.';
+  } catch (e) {
+    statusHint.textContent = 'Fout bij genereren: ' + e.message;
+  }
+  genBtn.disabled = false;
+};
+
+ttsBtn.onclick = async () => {
+  ttsBtn.disabled = true; statusHint.textContent = 'Audio genereren...';
+  try {
+    const res = await fetch('/api/tts', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text: scriptEl.value }) });
+    const data = await res.json();
+    const player = document.getElementById('player');
+    if (data.audioUrl) {
+      player.src = data.audioUrl; player.style.display = 'block'; player.play();
+      statusHint.textContent = data.demo ? 'Demo-audio (geen TTS-API geconfigureerd) — browser-voorlezing gebruikt.' : 'Audio klaar.';
+    } else if (data.useBrowserTTS && 'speechSynthesis' in window) {
+      const u = new SpeechSynthesisUtterance(scriptEl.value);
+      u.lang = 'nl-NL';
+      speechSynthesis.speak(u);
+      statusHint.textContent = 'Voorgelezen via browserstem (demo-modus).';
+    }
+  } catch (e) {
+    statusHint.textContent = 'TTS-fout: ' + e.message;
+  }
+  ttsBtn.disabled = false;
+};
+</script>
+</body>
+</html>

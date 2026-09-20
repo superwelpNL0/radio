@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OBS — Radio Studio 2030</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<script src="js/storage.js"></script>
+<script src="js/shell.js"></script>
+<script src="js/spotify.js"></script>
+<script src="js/timer.js"></script>
+<script>
+const params = new URLSearchParams(location.search);
+const layout = params.get('layout');
+
+if (!layout) {
+  const content = rsInitPage('obs.html', 'OBS-integratie', 'Browser Source layouts voor gebruik in OBS Studio');
+  const station = rsStation();
+  const base = location.origin + location.pathname.replace('obs.html', '');
+  content.innerHTML = `
+    <div class="grid grid-2">
+      <div class="panel">
+        <div class="panel-head"><h3>OBS — Fullscreen</h3></div>
+        <p class="hint">Grote albumcover, artiest/titel, klok en live-indicator. Geen bediening zichtbaar.</p>
+        <a class="btn btn-primary" target="_blank" href="obs.html?layout=fullscreen">Voorbeeld openen ↗</a>
+        <div class="hint" style="margin-top:8px;">URL: ${base}obs.html?layout=fullscreen</div>
+      </div>
+      <div class="panel">
+        <div class="panel-head"><h3>OBS — Now Playing</h3></div>
+        <p class="hint">Compacte "now playing" balk, ideaal als onderste overlay.</p>
+        <a class="btn btn-primary" target="_blank" href="obs-now-playing.html">Voorbeeld openen ↗</a>
+        <div class="hint" style="margin-top:8px;">URL: ${base}obs-now-playing.html</div>
+      </div>
+      <div class="panel">
+        <div class="panel-head"><h3>OBS — Timer</h3></div>
+        <p class="hint">Grote timer, geschikt als losse Browser Source bovenin beeld.</p>
+        <a class="btn btn-primary" target="_blank" href="obs-timer.html">Voorbeeld openen ↗</a>
+        <div class="hint" style="margin-top:8px;">URL: ${base}obs-timer.html</div>
+      </div>
+      <div class="panel">
+        <div class="panel-head"><h3>OBS — Radio Overlay</h3></div>
+        <p class="hint">Compacte cover + titel + klok in de hoek, transparante achtergrond.</p>
+        <a class="btn btn-primary" target="_blank" href="obs.html?layout=overlay">Voorbeeld openen ↗</a>
+        <div class="hint" style="margin-top:8px;">URL: ${base}obs.html?layout=overlay</div>
+      </div>
+    </div>
+    <div class="panel" style="margin-top:20px;">
+      <div class="panel-head"><h3>Instellen in OBS Studio</h3></div>
+      <ol style="line-height:1.9; color:var(--text-mid); padding-left:20px;">
+        <li>Voeg een nieuwe bron toe → <b>Browser</b>.</li>
+        <li>Plak de gewenste URL hierboven.</li>
+        <li>Stel breedte/hoogte in (bv. 1920×1080 voor fullscreen, 900×200 voor now playing).</li>
+        <li>Vink "Shutdown source when not visible" uit zodat audio/tijd doorloopt.</li>
+        <li>Zet de achtergrond op transparant — de overlay/now-playing layouts hebben al een transparante body.</li>
+      </ol>
+    </div>
+  `;
+} else {
+  document.body.classList.add('obs');
+  document.body.style.background = layout === 'overlay' ? 'transparent' : 'var(--bg-0)';
+  const frame = document.createElement('div');
+  frame.className = 'obs-frame';
+  document.body.appendChild(frame);
+
+  if (layout === 'fullscreen') {
+    frame.innerHTML = `
+      <div style="display:flex; align-items:center; gap:56px; max-width:1100px; margin:0 auto;">
+        <div style="width:340px; flex-shrink:0;"><div class="cover-wrap"><div class="cover-ring"></div><img id="cover" src=""></div></div>
+        <div>
+          <div class="chip chip-green" style="margin-bottom:14px;"><span class="dot blink"></span>LIVE</div>
+          <div style="font-size:15px; color:var(--text-low); text-transform:uppercase; letter-spacing:.1em;" id="album"></div>
+          <h1 style="font-size:52px; margin-top:8px;" id="title"></h1>
+          <div style="font-size:24px; color:var(--text-mid); margin-top:4px;" id="artist"></div>
+          <div class="mono" style="font-size:20px; color:var(--text-low); margin-top:26px;" id="clock"></div>
+        </div>
+      </div>`;
+    function render() {
+      const s = SpotifyEngine.getState();
+      document.getElementById('cover').src = s.track.cover;
+      document.getElementById('album').textContent = s.track.album || '';
+      document.getElementById('title').textContent = s.track.title;
+      document.getElementById('artist').textContent = s.track.artist;
+    }
+    SpotifyEngine.on('update', render); SpotifyEngine.init(); render();
+    setInterval(() => document.getElementById('clock').textContent = new Date().toLocaleTimeString('nl-NL'), 1000);
+  }
+
+  if (layout === 'overlay') {
+    frame.style.cssText = 'padding:20px; min-height:auto; justify-content:flex-end;';
+    frame.innerHTML = `
+      <div style="display:flex; align-items:center; gap:14px; background:rgba(10,12,18,0.72); backdrop-filter:blur(10px); border:1px solid var(--panel-border); border-radius:16px; padding:12px 18px; width:fit-content;">
+        <img id="cover" src="" style="width:52px; height:52px; border-radius:8px; object-fit:cover;">
+        <div>
+          <div style="font-size:14px; font-weight:700;" id="title"></div>
+          <div style="font-size:12px; color:var(--text-mid);" id="artist"></div>
+        </div>
+        <div class="mono" style="font-size:13px; color:var(--text-low); margin-left:10px;" id="clock"></div>
+      </div>`;
+    function render() {
+      const s = SpotifyEngine.getState();
+      document.getElementById('cover').src = s.track.cover;
+      document.getElementById('title').textContent = s.track.title;
+      document.getElementById('artist').textContent = s.track.artist;
+    }
+    SpotifyEngine.on('update', render); SpotifyEngine.init(); render();
+    setInterval(() => document.getElementById('clock').textContent = new Date().toLocaleTimeString('nl-NL'), 1000);
+  }
+}
+</script>
+</body>
+</html>

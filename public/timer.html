@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Timer — Radio Studio 2030</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<script src="js/storage.js"></script>
+<script src="js/shell.js"></script>
+<script src="js/timer.js"></script>
+<script>
+const content = rsInitPage('timer.html', 'Radio Timer', 'Live timer voor tijdens de uitzending');
+content.innerHTML = `
+  <div class="grid" style="grid-template-columns:1fr 340px; align-items:start;">
+    <div class="panel" style="text-align:center; padding:48px 24px;">
+      <div class="timer-label" id="tLabel">VOLGEND ITEM</div>
+      <div class="timer-display mono" id="tDisplay">03:00</div>
+      <div class="transport" style="margin-top:28px;">
+        <button class="btn btn-icon btn-lg" id="tReset" title="Reset">↺</button>
+        <button class="btn btn-icon btn-lg btn-primary play" id="tToggle" title="Start/Pauze">▶</button>
+        <button class="btn btn-icon btn-lg" id="tStop" title="Stop">⏹</button>
+      </div>
+      <div style="display:flex; gap:10px; justify-content:center; margin-top:22px; flex-wrap:wrap;">
+        <button class="btn" data-add="10">+10s</button>
+        <button class="btn" data-add="30">+30s</button>
+        <button class="btn" data-add="60">+1 min</button>
+        <button class="btn" data-add="-10">−10s</button>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head"><h3>Instellingen</h3></div>
+      <div class="field">
+        <label>Modus</label>
+        <select id="modeSelect">
+          <option value="countdown">Countdown</option>
+          <option value="stopwatch">Stopwatch</option>
+          <option value="segment">Segment timer</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Label</label>
+        <input type="text" id="labelInput" placeholder="VOLGEND ITEM">
+      </div>
+      <div class="field" id="manualSetField">
+        <label>Handmatig instellen (mm:ss)</label>
+        <div style="display:flex; gap:8px;">
+          <input type="text" id="manualInput" placeholder="03:00">
+          <button class="btn" id="manualSetBtn">Zet</button>
+        </div>
+      </div>
+      <div class="divider"></div>
+      <div class="field">
+        <label>Waarschuwing bij (sec)</label>
+        <input type="number" id="warnAt" min="0">
+      </div>
+      <div class="field">
+        <label>Rood alarm bij (sec)</label>
+        <input type="number" id="dangerAt" min="0">
+      </div>
+      <div class="hint">Presets: <button class="btn btn-sm" data-preset="60">1:00</button> <button class="btn btn-sm" data-preset="180">3:00</button> <button class="btn btn-sm" data-preset="300">5:00</button></div>
+    </div>
+  </div>
+`;
+
+function render() {
+  const t = TimerEngine.getState();
+  const val = t.mode === 'stopwatch' ? t.elapsed : t.remaining;
+  const el = document.getElementById('tDisplay');
+  el.textContent = rsFmtClock(val);
+  el.classList.toggle('danger', t.mode !== 'stopwatch' && val <= t.dangerAt);
+  el.classList.toggle('warn', t.mode !== 'stopwatch' && val > t.dangerAt && val <= t.warnAt);
+  document.getElementById('tLabel').textContent = t.segmentLabel;
+  document.getElementById('tToggle').textContent = t.running ? '⏸' : '▶';
+  document.getElementById('modeSelect').value = t.mode;
+  document.getElementById('labelInput').value = t.segmentLabel;
+  document.getElementById('warnAt').value = t.warnAt;
+  document.getElementById('dangerAt').value = t.dangerAt;
+  document.getElementById('manualSetField').style.display = t.mode === 'stopwatch' ? 'none' : 'block';
+}
+TimerEngine.on(render); render();
+
+document.getElementById('tToggle').onclick = () => TimerEngine.toggle();
+document.getElementById('tReset').onclick = () => TimerEngine.reset();
+document.getElementById('tStop').onclick = () => { TimerEngine.pause(); TimerEngine.reset(); };
+document.querySelectorAll('[data-add]').forEach(b => b.onclick = () => TimerEngine.addSeconds(Number(b.dataset.add)));
+document.querySelectorAll('[data-preset]').forEach(b => b.onclick = () => TimerEngine.setSeconds(Number(b.dataset.preset)));
+document.getElementById('modeSelect').onchange = (e) => TimerEngine.setMode(e.target.value);
+document.getElementById('labelInput').onchange = (e) => TimerEngine.setLabel(e.target.value || 'VOLGEND ITEM');
+document.getElementById('warnAt').onchange = (e) => { TimerEngine.getState().warnAt = Number(e.target.value); render(); };
+document.getElementById('dangerAt').onchange = (e) => { TimerEngine.getState().dangerAt = Number(e.target.value); render(); };
+document.getElementById('manualSetBtn').onclick = () => {
+  const parts = document.getElementById('manualInput').value.split(':').map(Number);
+  if (parts.length === 2 && !parts.some(isNaN)) TimerEngine.setSeconds(parts[0]*60 + parts[1]);
+};
+window.addEventListener('rs:playpause', () => TimerEngine.toggle());
+</script>
+</body>
+</html>

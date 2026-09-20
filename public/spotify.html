@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Spotify — Radio Studio 2030</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<script src="js/storage.js"></script>
+<script src="js/shell.js"></script>
+<script src="js/spotify.js"></script>
+<script>
+const content = rsInitPage('spotify.html', 'Spotify Player', 'Muziekbediening voor de uitzending');
+content.innerHTML = `
+  <div class="grid" style="grid-template-columns:1fr 1fr; align-items:start;">
+    <div class="panel">
+      <div class="panel-head">
+        <h3>Verbinding</h3><span class="fill"></span>
+        <span class="chip" id="connChip">—</span>
+      </div>
+      <p class="hint" style="margin-bottom:14px;">Koppel je Spotify Premium-account via de Spotify Developer Dashboard OAuth-flow. Zonder koppeling draait de speler in demo-modus met voorbeeldnummers.</p>
+      <button class="btn btn-primary" id="connectBtn">🔗 Verbind met Spotify</button>
+      <div class="divider"></div>
+      <div class="stat"><div class="v" id="modeVal">Demo</div><div class="l">Modus</div></div>
+    </div>
+
+    <div class="panel" style="text-align:center;">
+      <div style="width:260px; margin:0 auto;">
+        <div class="cover-wrap"><div class="cover-ring"></div><img id="cover" src=""></div>
+      </div>
+      <div style="font-size:11px; color:var(--text-low); text-transform:uppercase; margin-top:16px;" id="album">Album</div>
+      <h2 style="margin-top:4px;" id="title">—</h2>
+      <div style="color:var(--text-mid);" id="artist">—</div>
+      <div style="max-width:420px; margin:20px auto 0;">
+        <div class="progress" id="progress"><i></i></div>
+        <div class="progress-labels"><span id="pos">0:00</span><span id="remain">-0:00</span></div>
+      </div>
+      <div class="transport">
+        <button class="btn btn-icon" id="prevBtn">⏮</button>
+        <button class="btn btn-icon btn-primary play" id="playBtn">▶</button>
+        <button class="btn btn-icon" id="nextBtn">⏭</button>
+      </div>
+      <div style="display:flex; align-items:center; gap:10px; max-width:260px; margin:16px auto 0;">
+        <span>🔉</span><input type="range" id="volSlider" min="0" max="100" value="70"><span>🔊</span>
+      </div>
+      <label style="margin-top:16px; display:inline-flex; align-items:center; gap:8px; cursor:pointer;">
+        <span class="switch"><input type="checkbox" id="miniToggle"><span class="slider"></span></span>
+        <span style="font-size:12.5px; color:var(--text-mid);">Mini-player overal tonen</span>
+      </label>
+    </div>
+  </div>
+
+  <div class="grid grid-2" style="margin-top:20px;">
+    <div class="panel">
+      <div class="panel-head"><h3>Wachtrij</h3></div>
+      <div id="queueList"></div>
+    </div>
+    <div class="panel">
+      <div class="panel-head"><h3>Recent afgespeeld</h3></div>
+      <div id="recentList"><div class="hint">Nog niets afgespeeld deze sessie</div></div>
+    </div>
+  </div>
+`;
+
+function render() {
+  const s = SpotifyEngine.getState();
+  document.getElementById('cover').src = s.track.cover;
+  document.getElementById('album').textContent = s.track.album || '';
+  document.getElementById('title').textContent = s.track.title;
+  document.getElementById('artist').textContent = s.track.artist;
+  document.getElementById('pos').textContent = rsFormatTime(s.position);
+  document.getElementById('remain').textContent = '-' + rsFormatTime(s.track.duration - s.position);
+  document.querySelector('#progress > i').style.width = (s.position/s.track.duration*100)+'%';
+  document.getElementById('playBtn').textContent = s.isPlaying ? '⏸' : '▶';
+  document.getElementById('modeVal').textContent = s.mode === 'live' ? 'Live (Spotify)' : 'Demo';
+  document.getElementById('connChip').className = 'chip ' + (s.connected ? 'chip-green' : 'chip-amber');
+  document.getElementById('connChip').innerHTML = s.connected ? '🟢 Verbonden' : '🟡 Demo-modus';
+  document.getElementById('connectBtn').textContent = s.connected ? '✅ Verbonden met Spotify' : '🔗 Verbind met Spotify';
+
+  document.getElementById('queueList').innerHTML = s.queue.map(t => `
+    <div class="queue-item"><img src="${t.cover}"><div class="meta"><div class="t">${t.title}</div><div class="a">${t.artist}</div></div></div>
+  `).join('') || '<div class="hint">Wachtrij leeg</div>';
+
+  document.getElementById('recentList').innerHTML = s.recent.length ? s.recent.map(t => `
+    <div class="queue-item"><img src="${t.cover}"><div class="meta"><div class="t">${t.title}</div><div class="a">${t.artist}</div></div></div>
+  `).join('') : '<div class="hint">Nog niets afgespeeld deze sessie</div>';
+}
+SpotifyEngine.on('update', render); SpotifyEngine.on('tick', render);
+SpotifyEngine.init(); render();
+
+document.getElementById('playBtn').onclick = () => SpotifyEngine.toggle();
+document.getElementById('nextBtn').onclick = () => SpotifyEngine.nextTrack();
+document.getElementById('prevBtn').onclick = () => SpotifyEngine.prevTrack();
+document.getElementById('progress').onclick = (e) => {
+  const r = e.currentTarget.getBoundingClientRect();
+  SpotifyEngine.seek((e.clientX - r.left) / r.width * SpotifyEngine.getState().track.duration);
+};
+document.getElementById('volSlider').oninput = (e) => SpotifyEngine.setVolume(Number(e.target.value));
+document.getElementById('connectBtn').onclick = () => { window.location.href = '/auth/spotify/login'; };
+
+const miniToggle = document.getElementById('miniToggle');
+miniToggle.checked = RS.get('rs_mini_player', false);
+miniToggle.onchange = () => RS.set('rs_mini_player', miniToggle.checked);
+</script>
+</body>
+</html>

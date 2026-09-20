@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dashboard — Radio Studio 2030</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<script src="js/storage.js"></script>
+<script src="js/shell.js"></script>
+<script src="js/spotify.js"></script>
+<script src="js/timer.js"></script>
+<script>
+const station = rsStation();
+const content = rsInitPage('dashboard.html', 'Dashboard', 'Overzicht van de huidige uitzending');
+content.innerHTML = `
+  <div class="grid grid-4" style="margin-bottom:20px;">
+    <div class="panel"><div class="stat"><div class="v" id="statShow">${station.show}</div><div class="l">Huidige show</div></div></div>
+    <div class="panel"><div class="stat"><div class="v" id="statPresenter">${station.presenter}</div><div class="l">Presentator</div></div></div>
+    <div class="panel"><div class="stat"><div class="v mono" id="statListeners">–</div><div class="l">Luisteraars</div></div></div>
+    <div class="panel"><div class="stat"><div class="v" id="statStream"><span class="chip chip-red">🔴 OFFLINE</span></div><div class="l">Stream status</div></div></div>
+  </div>
+
+  <div class="grid" style="grid-template-columns:1.2fr 0.8fr;">
+    <div class="panel">
+      <div class="panel-head"><h3>Now Playing</h3><span class="fill"></span><span class="chip chip-green"><span class="dot blink"></span>ON AIR</span></div>
+      <div style="display:flex; gap:20px; align-items:center;">
+        <div style="width:140px; flex-shrink:0;"><div class="cover-wrap"><img id="cover" src=""></div></div>
+        <div style="flex:1; min-width:0;">
+          <div style="font-size:11px; color:var(--text-low); text-transform:uppercase;">Artiest</div>
+          <div style="font-size:20px; font-weight:700; margin-top:2px;" id="artist">—</div>
+          <div style="font-size:15px; color:var(--text-mid); margin-top:2px;" id="title">—</div>
+          <div class="transport" style="justify-content:flex-start; margin-top:14px;">
+            <button class="btn btn-icon" id="playBtn">▶</button>
+            <button class="btn btn-icon" id="nextBtn">⏭</button>
+          </div>
+        </div>
+      </div>
+      <div style="margin-top:16px;">
+        <div class="progress" id="progress"><i></i></div>
+        <div class="progress-labels"><span id="pos">0:00</span><span id="dur">0:00</span></div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head"><h3>Timer</h3></div>
+      <div class="timer-label" id="tLabel">VOLGEND ITEM</div>
+      <div class="timer-display mono" style="font-size:56px;" id="tDisplay">03:00</div>
+    </div>
+  </div>
+
+  <div class="grid grid-2" style="margin-top:20px;">
+    <div class="panel">
+      <div class="panel-head"><h3>Volgend item</h3></div>
+      <div id="nextItem"></div>
+    </div>
+    <div class="panel">
+      <div class="panel-head"><h3>Datum &amp; Tijd</h3></div>
+      <div style="display:flex; gap:24px;">
+        <div class="stat"><div class="v mono" id="bigClock">--:--:--</div><div class="l">Tijd</div></div>
+        <div class="stat"><div class="v" id="bigDate">—</div><div class="l">Datum</div></div>
+      </div>
+    </div>
+  </div>
+`;
+
+function renderNow() {
+  const s = SpotifyEngine.getState();
+  document.getElementById('cover').src = s.track.cover;
+  document.getElementById('artist').textContent = s.track.artist;
+  document.getElementById('title').textContent = s.track.title;
+  document.getElementById('pos').textContent = rsFormatTime(s.position);
+  document.getElementById('dur').textContent = rsFormatTime(s.track.duration);
+  document.querySelector('#progress > i').style.width = (s.position/s.track.duration*100)+'%';
+  document.getElementById('playBtn').textContent = s.isPlaying ? '⏸' : '▶';
+  const nq = s.queue[0];
+  document.getElementById('nextItem').innerHTML = nq ? `<div class="queue-item"><img src="${nq.cover}"><div class="meta"><div class="t">${nq.title}</div><div class="a">${nq.artist}</div></div></div>` : '<div class="hint">Wachtrij leeg</div>';
+}
+SpotifyEngine.on('update', renderNow); SpotifyEngine.on('tick', renderNow);
+SpotifyEngine.init(); renderNow();
+document.getElementById('playBtn').onclick = () => SpotifyEngine.toggle();
+document.getElementById('nextBtn').onclick = () => SpotifyEngine.nextTrack();
+
+function renderTimer() {
+  const t = TimerEngine.getState();
+  const val = t.mode === 'stopwatch' ? t.elapsed : t.remaining;
+  const el = document.getElementById('tDisplay');
+  el.textContent = rsFmtClock(val);
+  el.classList.toggle('danger', t.mode !== 'stopwatch' && val <= t.dangerAt);
+  el.classList.toggle('warn', t.mode !== 'stopwatch' && val > t.dangerAt && val <= t.warnAt);
+  document.getElementById('tLabel').textContent = t.segmentLabel;
+}
+TimerEngine.on(renderTimer); renderTimer();
+
+let listeners = station.listeners || 1200;
+document.getElementById('statListeners').textContent = listeners.toLocaleString('nl-NL');
+setInterval(() => { listeners += Math.round((Math.random()-0.45)*8); document.getElementById('statListeners').textContent = Math.max(20,listeners).toLocaleString('nl-NL'); }, 4000);
+
+function tickClock(){ const d = new Date(); document.getElementById('bigClock').textContent = d.toLocaleTimeString('nl-NL'); document.getElementById('bigDate').textContent = d.toLocaleDateString('nl-NL',{weekday:'long',day:'numeric',month:'long'}); }
+tickClock(); setInterval(tickClock,1000);
+
+// stream status check
+fetch('/api/stream/status').then(r=>r.ok?r.json():null).then(d=>{
+  if (d && d.online) document.getElementById('statStream').innerHTML = '<span class="chip chip-green">🟢 ONLINE</span>';
+}).catch(()=>{});
+</script>
+</body>
+</html>

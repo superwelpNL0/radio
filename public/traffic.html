@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Verkeer — Radio Studio 2030</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<script src="js/storage.js"></script>
+<script src="js/shell.js"></script>
+<script>
+const content = rsInitPage('traffic.html', 'Verkeersinformatie', 'Actueel verkeer met automatisch script');
+const cfg = RS.get(RS_KEYS.apiConfig, {});
+content.innerHTML = `
+  <div class="grid" style="grid-template-columns:1fr 1.3fr;">
+    <div class="panel">
+      <div class="panel-head"><h3>Regio</h3></div>
+      <div class="field">
+        <label>Regio</label>
+        <input type="text" id="regionInput" value="${cfg.trafficRegion || 'Nederland'}">
+      </div>
+      <button class="btn btn-primary btn-lg" id="genBtn" style="width:100%;">🚗 Genereer verkeersbericht</button>
+      <div class="divider"></div>
+      <div class="hint" id="hint"></div>
+    </div>
+    <div class="panel">
+      <div class="panel-head"><h3>Script</h3></div>
+      <textarea id="script" placeholder="Klik op 'Genereer verkeersbericht'..."></textarea>
+    </div>
+  </div>
+
+  <div class="panel" style="margin-top:20px;">
+    <div class="panel-head"><h3>Filelijst</h3></div>
+    <div id="jamList"><div class="hint">Nog geen data opgehaald.</div></div>
+  </div>
+`;
+
+document.getElementById('genBtn').onclick = async () => {
+  const region = document.getElementById('regionInput').value.trim() || 'Nederland';
+  cfg.trafficRegion = region; RS.set(RS_KEYS.apiConfig, cfg);
+  const hint = document.getElementById('hint');
+  hint.textContent = 'Verkeer ophalen...';
+  try {
+    const res = await fetch('/api/traffic?region=' + encodeURIComponent(region));
+    const d = await res.json();
+    document.getElementById('script').value = d.script || '';
+    document.getElementById('jamList').innerHTML = (d.jams || []).map(j => `
+      <div class="queue-item" style="cursor:default;">
+        <span class="chip chip-amber">${j.delay}</span>
+        <div class="meta"><div class="t">${j.road}</div><div class="a">${j.description}</div></div>
+      </div>`).join('') || '<div class="hint">Geen files gevonden — verkeer stroomt door.</div>';
+    hint.textContent = d.demo ? 'Demo-data gebruikt (geen Traffic-API geconfigureerd).' : 'Klaar.';
+  } catch (e) { hint.textContent = 'Fout: ' + e.message; }
+};
+document.getElementById('genBtn').click();
+</script>
+</body>
+</html>

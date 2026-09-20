@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Soundboard — Radio Studio 2030</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<script src="js/storage.js"></script>
+<script src="js/shell.js"></script>
+<script src="js/audio-engine.js"></script>
+<script src="js/soundboard-ui.js"></script>
+<script>
+const content = rsInitPage('soundboard.html', 'Soundboard', 'Klik of gebruik F1–F10 om sounds af te spelen');
+content.innerHTML = `
+  <div class="panel">
+    <div class="panel-head">
+      <h3>Pads</h3><span class="fill"></span>
+      <input type="file" id="rsSoundUpload" accept="audio/*" style="display:none">
+      <button class="btn btn-sm" id="uploadBtn">⬆ Upload sound</button>
+      <button class="btn btn-sm btn-danger" id="stopAllBtn">⏹ Stop alles</button>
+    </div>
+    <div id="pads" class="sound-grid"></div>
+  </div>
+
+  <div class="panel" style="margin-top:20px;">
+    <div class="panel-head"><h3>Sounds beheren</h3></div>
+    <div id="manageList"></div>
+  </div>
+`;
+
+const pads = document.getElementById('pads');
+rsRenderSoundboard(pads, {});
+rsInitSoundUpload(document.getElementById('rsSoundUpload'), pads, {});
+document.getElementById('uploadBtn').onclick = () => document.getElementById('rsSoundUpload').click();
+document.getElementById('stopAllBtn').onclick = () => window.dispatchEvent(new CustomEvent('rs:stopsound'));
+
+function renderManage() {
+  const sounds = rsGetSounds();
+  const host = document.getElementById('manageList');
+  host.innerHTML = sounds.map((s, i) => `
+    <div class="queue-item" style="cursor:default;">
+      <span style="font-size:20px;">${s.emoji || '🎵'}</span>
+      <div class="meta">
+        <input type="text" value="${s.name}" data-idx="${i}" class="rs-rename" style="background:transparent;border:none;color:var(--text-hi);font-weight:600;font-size:13.5px;padding:2px 0;width:100%;">
+        <div class="a">${s.custom ? 'Eigen upload' : 'Ingebouwd geluid'} ${s.key ? '· ' + s.key : ''}</div>
+      </div>
+      <input type="range" min="0" max="100" value="${(s.volume||1)*100}" class="rs-vol" data-idx="${i}" style="width:100px;">
+      <button class="btn btn-icon btn-sm rs-del" data-idx="${i}" title="Verwijderen">🗑</button>
+    </div>
+  `).join('');
+  host.querySelectorAll('.rs-rename').forEach(el => el.addEventListener('change', e => {
+    const arr = rsGetSounds(); arr[e.target.dataset.idx].name = e.target.value.toUpperCase(); rsSaveSounds(arr);
+    rsRenderSoundboard(pads, {});
+  }));
+  host.querySelectorAll('.rs-vol').forEach(el => el.addEventListener('input', e => {
+    const arr = rsGetSounds(); arr[e.target.dataset.idx].volume = e.target.value/100; rsSaveSounds(arr);
+  }));
+  host.querySelectorAll('.rs-del').forEach(el => el.addEventListener('click', async e => {
+    const arr = rsGetSounds();
+    const idx = Number(e.target.dataset.idx);
+    const [removed] = arr.splice(idx, 1);
+    if (removed.custom) await RSDB.delete(removed.id);
+    rsSaveSounds(arr);
+    rsRenderSoundboard(pads, {});
+    renderManage();
+  }));
+}
+renderManage();
+const origRender = rsRenderSoundboard;
+document.getElementById('rsSoundUpload').addEventListener('change', () => setTimeout(renderManage, 50));
+</script>
+</body>
+</html>
