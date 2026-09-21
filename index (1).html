@@ -1,0 +1,681 @@
+<!DOCTYPE html>
+<html lang="nl" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Radio Studio 2030</title>
+<meta name="theme-color" content="#07080d">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Sora:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{--bg:#06070c;--card:rgba(255,255,255,.055);--card2:rgba(255,255,255,.09);--bd:rgba(255,255,255,.11);--tx:#eef1f8;--mu:#8b94aa;--ac:#00e5ff;--ac2:#8b5cf6;--ok:#22e58a;--warn:#ffa41b;--bad:#ff3b57;--bass:0;--r:22px;--f:'Sora',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;--m:'DM Mono',ui-monospace,Menlo,Consolas,monospace}
+[data-theme=light]{--bg:#eceff6;--card:rgba(255,255,255,.72);--card2:rgba(255,255,255,.95);--bd:rgba(10,20,50,.12);--tx:#0e1326;--mu:#566078}
+html{color-scheme:dark}[data-theme=light]{color-scheme:light}
+body{font:14.5px/1.5 var(--f);background:var(--bg);color:var(--tx);min-height:100vh;overflow-x:hidden}
+body::before{content:'';position:fixed;inset:0;z-index:-1;background:radial-gradient(900px 520px at 12% -10%,color-mix(in srgb,var(--ac) 20%,transparent),transparent),radial-gradient(820px 620px at 100% 8%,color-mix(in srgb,var(--ac2) 22%,transparent),transparent),radial-gradient(700px 500px at 50% 125%,color-mix(in srgb,var(--ac) 12%,transparent),transparent)}
+button,input,select,textarea{font:inherit;color:inherit}
+h1,h2,h3{font-weight:700;letter-spacing:-.01em}
+h3{font-size:.8rem;color:var(--mu);font-weight:600;margin-bottom:12px;letter-spacing:.02em}
+a{color:var(--ac)}
+#app{display:grid;grid-template-columns:232px 1fr;min-height:100vh}
+#nav{position:sticky;top:0;height:100vh;padding:20px 14px;border-right:1px solid var(--bd);background:color-mix(in srgb,var(--bg) 70%,transparent);backdrop-filter:blur(20px);display:flex;flex-direction:column;gap:4px;overflow:auto}
+.brand{display:flex;align-items:center;gap:10px;padding:4px 8px 16px;font-weight:800;line-height:1.15}
+.brand img{width:38px;height:38px;border-radius:12px;object-fit:cover}
+.brand .lg{width:38px;height:38px;border-radius:12px;background:linear-gradient(135deg,var(--ac),var(--ac2));display:grid;place-items:center;font-size:20px;color:#031018}
+#nav a{display:flex;gap:10px;align-items:center;padding:9px 12px;border-radius:12px;color:var(--mu);text-decoration:none;font-weight:600;font-size:.9rem}
+#nav a:hover{background:var(--card);color:var(--tx)}
+#nav a.on{background:var(--card2);color:var(--tx);box-shadow:inset 3px 0 0 var(--ac)}
+#nav .sp{flex:1}
+main{min-width:0;display:flex;flex-direction:column}
+#top{position:sticky;top:0;z-index:20;display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:12px 24px;background:color-mix(in srgb,var(--bg) 72%,transparent);backdrop-filter:blur(18px);border-bottom:1px solid var(--bd)}
+#top .st{font-weight:700;margin-right:auto}
+#view{padding:22px 24px 120px}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;background:var(--card);border:1px solid var(--bd);border-radius:14px;padding:9px 15px;font-weight:600;cursor:pointer;transition:transform .12s,background .12s,box-shadow .12s;white-space:nowrap}
+.btn:hover{background:var(--card2)}.btn:active{transform:scale(.96)}
+.btn.pri{background:linear-gradient(135deg,var(--ac),var(--ac2));color:#031018;border:0;box-shadow:0 8px 28px -10px var(--ac)}
+.btn.bad{background:color-mix(in srgb,var(--bad) 24%,transparent);border-color:var(--bad)}
+.btn.sm{padding:6px 11px;font-size:.8rem;border-radius:11px}
+.btn.on{border-color:var(--ac);box-shadow:0 0 0 1px var(--ac) inset}
+button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible,a:focus-visible{outline:2px solid var(--ac);outline-offset:2px}
+.pill{display:inline-flex;align-items:center;gap:7px;padding:5px 12px;border-radius:99px;background:var(--card);border:1px solid var(--bd);font-weight:700;font-size:.78rem}
+.dot{width:9px;height:9px;border-radius:50%;background:var(--mu)}
+.pill.ok .dot,.dot.ok{background:var(--ok);box-shadow:0 0 10px var(--ok)}
+.pill.bad .dot{background:var(--bad);box-shadow:0 0 10px var(--bad)}
+.pill.warn .dot{background:var(--warn)}
+body.onair #airbtn{background:color-mix(in srgb,var(--bad) 30%,transparent);border-color:var(--bad)}
+body.onair #airbtn .dot{background:var(--bad);box-shadow:0 0 12px var(--bad);animation:bl 1.2s infinite}
+.g{display:grid;gap:18px;grid-template-columns:repeat(12,1fr)}
+.s3{grid-column:span 3}.s4{grid-column:span 4}.s5{grid-column:span 5}.s6{grid-column:span 6}.s7{grid-column:span 7}.s8{grid-column:span 8}.s12{grid-column:span 12}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:var(--r);padding:20px;backdrop-filter:blur(22px);box-shadow:0 20px 60px -30px #000}
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}.sb{justify-content:space-between}
+.mu{color:var(--mu)}.mono{font-family:var(--m)}
+.np{display:grid;grid-template-columns:minmax(150px,300px) 1fr;gap:26px;align-items:center}
+.cover-wrap{position:relative;aspect-ratio:1;width:100%}
+.ring{position:absolute;inset:-12px;border-radius:34px;background:conic-gradient(from 0deg,var(--ac),var(--ac2),var(--ac));filter:blur(24px);opacity:calc(.22 + var(--bass)*.7);animation:sp 9s linear infinite}
+.cover{position:relative;width:100%;height:100%;border-radius:26px;object-fit:cover;transform:scale(calc(1 + var(--bass)*.04));box-shadow:0 24px 60px -20px #000;background:#111}
+.np h2{font-size:clamp(1.5rem,3vw,2.5rem);line-height:1.08;margin:12px 0 4px}
+.np .art{font-size:1.15rem;color:var(--ac);font-weight:600}
+.time{display:flex;gap:12px;align-items:center;margin:18px 0;font-family:var(--m);font-size:.82rem;color:var(--mu)}
+.bar{flex:1;height:10px;border-radius:9px;background:var(--card2);cursor:pointer;position:relative;overflow:hidden}
+.bar i{position:absolute;left:0;top:0;bottom:0;width:0;background:linear-gradient(90deg,var(--ac2),var(--ac));border-radius:9px}
+.ctl{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.ctl .btn{width:52px;height:52px;padding:0;font-size:1.15rem;border-radius:50%}
+.ctl .btn.big{width:70px;height:70px;font-size:1.6rem;background:linear-gradient(135deg,var(--ac),var(--ac2));color:#031018;border:0;box-shadow:0 10px 34px -8px var(--ac)}
+input[type=range]{accent-color:var(--ac);width:100%;min-width:80px}
+input[type=text],input[type=password],input[type=url],input[type=time],input[type=number],input[type=color],select,textarea{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:9px 12px;width:100%}
+textarea{min-height:170px;resize:vertical;line-height:1.55}
+input[type=color]{padding:2px;height:40px}
+select option{background:#111;color:#eee}
+.fld{display:flex;flex-direction:column;gap:5px;margin-bottom:12px}.fld>span{font-size:.78rem;color:var(--mu);font-weight:600}
+.fld.ck{flex-direction:row;align-items:center;gap:10px}.fld.ck input{width:auto}
+.tbox{text-align:center;padding:8px 0}
+.tlabel{font-weight:700;letter-spacing:.14em;font-size:.8rem;color:var(--mu)}
+.digits{font:500 clamp(46px,8vw,112px)/1.05 var(--m);text-shadow:0 0 34px color-mix(in srgb,var(--ac) 55%,transparent);transition:color .2s}
+.tbox.warn .digits{color:var(--warn);text-shadow:0 0 34px var(--warn)}
+.tbox.crit .digits{color:var(--bad);text-shadow:0 0 40px var(--bad);animation:bl .8s steps(2) infinite}
+.pads{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:14px}
+.pad{--c:#fff;position:relative;text-align:left;cursor:pointer;min-height:112px;padding:12px;border-radius:18px;border:1px solid color-mix(in srgb,var(--c) 50%,transparent);background:linear-gradient(160deg,color-mix(in srgb,var(--c) 26%,transparent),var(--card));overflow:hidden;transition:transform .1s}
+.pad:active{transform:scale(.95)}
+.pad.on{box-shadow:0 0 0 2px var(--c),0 0 30px var(--c);animation:pu .7s infinite alternate}
+.pad b{display:block;font-size:.85rem;margin-top:4px}
+.pad .ic{font-size:1.5rem}
+.pad kbd{position:absolute;right:9px;top:9px;font:500 .68rem var(--m);background:rgba(0,0,0,.35);color:#fff;border-radius:6px;padding:2px 6px}
+.pad canvas{width:100%;height:26px;display:block;margin-top:6px}
+.pad .ed{position:absolute;right:8px;bottom:8px;font-size:.8rem;opacity:.7;padding:2px 6px;border-radius:8px;background:rgba(0,0,0,.3)}
+.drop{border:2px dashed var(--bd);border-radius:18px;padding:16px;text-align:center;color:var(--mu);margin-top:14px}
+body.dragging .drop{border-color:var(--ac);color:var(--ac)}
+.mix{display:grid;grid-template-columns:repeat(5,1fr);gap:10px}
+.ch{text-align:center;display:flex;flex-direction:column;gap:8px;align-items:center}
+.ch input[type=range]{writing-mode:vertical-lr;direction:rtl;height:120px;width:30px;min-width:0}
+.ch b{font-size:.72rem;color:var(--mu)}
+.mute.on{background:var(--bad);color:#fff;border-color:var(--bad)}
+.vu{height:9px;border-radius:9px;background:var(--card2);overflow:hidden}
+.vu i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--ok),var(--warn) 75%,var(--bad));transition:width .06s}
+canvas.viz{width:100%;height:190px;display:block;border-radius:16px;background:rgba(0,0,0,.25)}
+.qi{display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:14px;border:1px solid var(--bd);background:var(--card);margin-bottom:8px;cursor:grab}
+.qi.first{border-color:var(--ac);background:color-mix(in srgb,var(--ac) 12%,var(--card))}
+.qi img{width:40px;height:40px;border-radius:9px}
+.qi .t{flex:1;min-width:0}.qi .t b,.qi .t span{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.qi.over{outline:2px dashed var(--ac)}
+.tag{font-size:.68rem;font-weight:700;padding:2px 8px;border-radius:8px;background:var(--card2);color:var(--mu)}
+.list{display:flex;flex-direction:column;gap:8px}
+.li{display:flex;gap:12px;align-items:center;padding:9px 12px;border-radius:12px;background:var(--card);border:1px solid var(--bd)}
+.li.cur{border-color:var(--ok);background:color-mix(in srgb,var(--ok) 12%,var(--card))}
+.li.nx{border-color:var(--ac)}
+.li .tm{font:500 .95rem var(--m);min-width:54px}
+.big-n{font:500 3rem/1 var(--m)}
+.flow{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.wxg{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
+.wxg .card{padding:14px}.wxg .v{font:500 1.7rem var(--m)}
+#mini{position:fixed;right:18px;bottom:18px;z-index:30;display:flex;align-items:center;gap:12px;padding:10px 14px 10px 10px;border-radius:20px;background:color-mix(in srgb,var(--bg) 78%,transparent);border:1px solid var(--bd);backdrop-filter:blur(22px);width:min(400px,calc(100vw - 24px));box-shadow:0 20px 50px -20px #000}
+#mini img{width:52px;height:52px;border-radius:12px}
+#mini .t{flex:1;min-width:0}#mini .t b,#mini .t span{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#mini .bar{height:5px;margin-top:6px}
+#mini .btn{width:38px;height:38px;padding:0;border-radius:50%}
+body.hidemini #mini,body.obs #mini{display:none}
+#emg{position:fixed;inset:0;z-index:100;display:none;place-items:center;text-align:center;background:rgba(160,0,20,.94);animation:bl 1s steps(2) infinite}
+#emg.show{display:grid}#emg h1{font-size:clamp(2rem,7vw,5rem)}
+dialog{border:1px solid var(--bd);border-radius:20px;background:var(--bg);color:var(--tx);padding:22px;width:min(420px,92vw);margin:auto}
+dialog::backdrop{background:rgba(0,0,0,.6);backdrop-filter:blur(4px)}
+#toast{position:fixed;left:50%;top:16px;transform:translateX(-50%);z-index:200;display:flex;flex-direction:column;gap:8px;align-items:center;pointer-events:none}
+#toast div{background:var(--card2);backdrop-filter:blur(20px);border:1px solid var(--bd);padding:10px 16px;border-radius:14px;font-weight:600;box-shadow:0 10px 30px -10px #000;animation:tin .25s}
+.note{font-size:.8rem;color:var(--mu);margin-top:8px}
+.warnbox{border:1px solid var(--warn);background:color-mix(in srgb,var(--warn) 12%,transparent);border-radius:14px;padding:10px 14px;font-size:.85rem;margin-bottom:12px}
+table{width:100%;border-collapse:collapse}td,th{padding:8px 6px;border-bottom:1px solid var(--bd);text-align:left;font-size:.88rem}
+kbd{font:500 .78rem var(--m);background:var(--card2);border:1px solid var(--bd);border-radius:7px;padding:2px 8px}
+/* OBS */
+body.obs #nav,body.obs #top{display:none}body.obs #app{display:block}body.obs #view{padding:0}
+body.obs-t{background:transparent}body.obs-t::before{display:none}
+.of{min-height:100vh;display:grid;grid-template-rows:auto 1fr auto;padding:4vh 4vw;gap:3vh}
+.of .hd{display:flex;align-items:center;gap:2vw;justify-content:space-between}
+.of .hd img{height:9vh;border-radius:14px}.of .stn{font-size:3.4vh;font-weight:800}
+.of .mid{display:grid;grid-template-columns:auto 1fr;gap:4vw;align-items:center}
+.of .cover-wrap{width:52vh}.of h2{font-size:8vh;line-height:1.05}.of .art{font-size:4.4vh}
+.of .digits{font-size:15vh}.of .ft{display:flex;justify-content:space-between;align-items:end;font-size:3vh}
+.onp{display:inline-flex;gap:18px;align-items:center;padding:16px 22px 16px 16px;border-radius:26px;background:rgba(8,10,18,.72);border:1px solid var(--bd);backdrop-filter:blur(20px);margin:24px;min-width:520px}
+.onp img{width:120px;height:120px;border-radius:18px}.onp h2{font-size:30px}.onp .art{font-size:20px;color:var(--ac)}
+.ot{display:grid;place-items:center;min-height:100vh}.ot .digits{font-size:22vw}
+.ovl{position:fixed;left:2vw;right:2vw;bottom:3vh;display:flex;align-items:center;gap:22px;padding:14px 26px 14px 14px;border-radius:26px;background:rgba(8,10,18,.78);border:1px solid var(--bd);backdrop-filter:blur(20px)}
+.ovl img.c{width:88px;height:88px;border-radius:16px}.ovl .lg{height:60px;border-radius:12px}
+.ovl .t{flex:1;min-width:0}.ovl h2{font-size:28px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.ovl .art{color:var(--ac);font-size:18px;font-weight:600}
+.ovl .ck{font:500 32px var(--m)}
+@keyframes sp{to{transform:rotate(360deg)}}@keyframes bl{50%{opacity:.35}}@keyframes pu{to{filter:brightness(1.25)}}@keyframes tin{from{opacity:0;transform:translateY(-8px)}}
+@media(max-width:1100px){.s3,.s4,.s5,.s6,.s7,.s8{grid-column:span 12}.s3,.s4{grid-column:span 6}}
+@media(max-width:900px){#app{display:block}#nav{position:fixed;z-index:40;top:auto;bottom:0;left:0;right:0;height:auto;flex-direction:row;padding:6px;border-top:1px solid var(--bd);border-right:0;overflow-x:auto;gap:2px}
+#nav .brand,#nav .sp{display:none}#nav a{flex-direction:column;gap:2px;font-size:.66rem;padding:6px 10px;white-space:nowrap}#nav a.on{box-shadow:inset 0 3px 0 var(--ac)}
+#top{padding:10px 14px}#view{padding:16px 14px 190px}#mini{bottom:72px;right:50%;transform:translateX(50%)}.np{grid-template-columns:1fr;text-align:center}.np .cover-wrap{max-width:280px;margin:0 auto}.ctl{justify-content:center}.mix{gap:4px}}
+@media(max-width:600px){.s3,.s4{grid-column:span 12}}
+@media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<div id="app">
+  <nav id="nav"></nav>
+  <main>
+    <header id="top">
+      <span class="st" data-f="station"></span>
+      <button class="btn" id="airbtn" data-act="air"><i class="dot"></i><span data-f="airtxt">OFF AIR</span></button>
+      <span class="pill" data-f="streampill"><i class="dot"></i><span data-f="stream">STREAM OFFLINE</span></span>
+      <span class="mono" data-f="clock" style="font-weight:500"></span>
+      <button class="btn sm" data-act="quickmute" data-f="qm" title="Quick mute (Q)">🔊</button>
+      <button class="btn sm bad" data-act="emergency" title="Noodknop (E)">🚨</button>
+      <button class="btn sm" data-act="theme" title="Donker/licht">🌓</button>
+      <button class="btn sm" data-act="fs" title="Volledig scherm">⛶</button>
+    </header>
+    <div id="view"></div>
+  </main>
+</div>
+<div id="mini">
+  <img data-cover alt="">
+  <div class="t"><b data-f="title"></b><span class="mu" data-f="artist"></span><div class="bar" data-act="seek"><i data-prog></i></div></div>
+  <button class="btn" data-act="prev">⏮</button><button class="btn pri" data-act="toggle" data-f="playicon">▶</button><button class="btn" data-act="next">⏭</button>
+</div>
+<div id="emg"><div><h1>🚨 NOODMELDING</h1><p id="emgt" style="font-size:1.6rem;margin:12px 0 24px">Programma onderbroken</p><button class="btn" data-act="emgoff">Sluiten</button></div></div>
+<dialog id="dlg"></dialog>
+<div id="toast"></div>
+<audio id="streamEl" preload="none"></audio>
+
+<script>
+'use strict';
+/* =========================================================
+   Radio Studio 2030 — één bestand, geen backend nodig.
+   Alles staat in de browser (localStorage + IndexedDB).
+   ========================================================= */
+const $=(s,r=document)=>r.querySelector(s),$$=(s,r=document)=>[...r.querySelectorAll(s)];
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const p2=n=>String(n).padStart(2,'0');
+const fmt=ms=>{ms=Math.max(0,Math.floor(ms/1000));const h=Math.floor(ms/3600),m=Math.floor(ms%3600/60),s=ms%60;return(h?p2(h)+':':'')+p2(m)+':'+p2(s)};
+const fmtH=ms=>{ms=Math.max(0,Math.floor(ms/1000));return p2(Math.floor(ms/3600))+':'+p2(Math.floor(ms%3600/60))+':'+p2(ms%60)};
+const LS={get(k,d){try{const v=localStorage.getItem('rs.'+k);return v==null?d:JSON.parse(v)}catch{return d}},set(k,v){try{localStorage.setItem('rs.'+k,JSON.stringify(v))}catch(e){toast('Opslag vol of geblokkeerd')}}};
+function toast(m){const d=document.createElement('div');d.textContent=m;$('#toast').appendChild(d);setTimeout(()=>d.remove(),3800)}
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+const go=r=>{location.hash='#/'+r};
+const isObs=()=>route().startsWith('obs');
+const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,7);
+const kn=k=>k===' '?'Space':k.length===1?k.toUpperCase():k;
+function cover(seed){let h=0;for(const c of seed)h=(h*31+c.charCodeAt(0))>>>0;const a=h%360,b=(a+70+h%80)%360;
+ const s=`<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 400 400'><defs><linearGradient id='g' x1='0' y1='0' x2='1' y2='1'><stop offset='0' stop-color='hsl(${a},80%,55%)'/><stop offset='1' stop-color='hsl(${b},80%,22%)'/></linearGradient></defs><rect width='400' height='400' fill='url(#g)'/><circle cx='${100+h%200}' cy='${120+h%160}' r='${60+h%80}' fill='rgba(255,255,255,.14)'/><circle cx='200' cy='200' r='92' fill='none' stroke='rgba(255,255,255,.25)' stroke-width='6'/><circle cx='200' cy='200' r='14' fill='rgba(0,0,0,.35)'/></svg>`;
+ return'data:image/svg+xml;utf8,'+encodeURIComponent(s)}
+
+/* ---------- instellingen ---------- */
+const DEF={station:'Radio Studio 2030',logo:'',accent:'#00e5ff',theme:'dark',mini:true,show:'Avondshow',host:'Presentator',streamUrl:'',statusUrl:'',
+ city:'Leeuwarden',lat:53.2012,lon:5.7999,geoFor:'Leeuwarden',region:'Nederland',trafficUrl:'',newsMode:'demo',newsFeed:'https://feeds.nos.nl/nosnieuwsalgemeen',
+ aiUrl:'https://api.openai.com/v1/chat/completions',aiKey:'',aiModel:'gpt-4o-mini',ttsUrl:'',ttsKey:'',voice:'',rate:1,duck:true,crossfade:false,
+ spClient:'',spRedirect:'',viz:'spectrum',jingleEvery:0,jingleId:'jingle',sched:'manual',autoSpeak:false};
+let cfg={...DEF,...LS.get('cfg',{})};const saveCfg=()=>LS.set('cfg',cfg);
+const HKN={playpause:'Play / Pause',next:'Volgend nummer',prev:'Vorig nummer',mic:'Microfoon aan/uit',soundboard:'Naar soundboard',timer:'Timer start/pauze',jingle:'Jingle afspelen',stop:'Stop alle geluiden',quickmute:'Quick mute',emergency:'Noodknop'};
+const HKD={playpause:' ',next:'n',prev:'p',mic:'m',soundboard:'s',timer:'t',jingle:'b',stop:'Escape',quickmute:'q',emergency:'e'};
+let HK={...HKD,...LS.get('hotkeys',{})};
+let M={mic:.8,music:.8,sb:.9,tts:1,master:.9,mute:{},...LS.get('mix',{})};M.mute=M.mute||{};const saveMix=()=>LS.set('mix',M);
+let AIR=LS.get('air',{on:false,start:0});
+function applyTheme(){document.documentElement.dataset.theme=cfg.theme;document.documentElement.style.setProperty('--ac',cfg.accent);
+ const hsl=cfg.accent;document.documentElement.style.setProperty('--ac2','#8b5cf6')}
+
+/* ---------- audio-engine ---------- */
+let ctx,bus={},an,anL,anR,micAn,micStream,micNode,duck=1,fade=1;
+function ensureCtx(){if(ctx){if(ctx.state==='suspended')ctx.resume();return ctx}
+ ctx=new(window.AudioContext||window.webkitAudioContext)();
+ for(const k of['master','music','sb','tts','mic'])bus[k]=ctx.createGain();
+ an=ctx.createAnalyser();an.fftSize=1024;an.smoothingTimeConstant=.78;
+ anL=ctx.createAnalyser();anR=ctx.createAnalyser();anL.fftSize=anR.fftSize=512;
+ const sp=ctx.createChannelSplitter(2);
+ ['music','sb','tts'].forEach(k=>bus[k].connect(bus.master));
+ bus.master.connect(an);bus.master.connect(ctx.destination);bus.master.connect(sp);sp.connect(anL,0);sp.connect(anR,1);
+ micAn=ctx.createAnalyser();micAn.fftSize=512;bus.mic.connect(micAn);
+ applyMix();return ctx}
+function applyMix(){const g=k=>M.mute[k]?0:M[k];
+ if(ctx){bus.master.gain.value=M.mute.master?0:M.master;bus.music.gain.value=g('music')*duck*fade;bus.sb.gain.value=g('sb');bus.tts.gain.value=g('tts');bus.mic.gain.value=g('mic')}
+ spVol();const a=$('#streamEl');if(a)a.volume=M.mute.master?0:M.master}
+function fadeTo(v,ms){return new Promise(r=>{const a=fade,t0=performance.now();(function s(){const k=Math.min(1,(performance.now()-t0)/ms);fade=a+(v-a)*k;applyMix();k<1?requestAnimationFrame(s):r()})()})}
+function setDuck(on){duck=on&&cfg.duck?.25:1;applyMix()}
+function stopAll(){Object.keys(act).forEach(stopSound);speechSynthesis?.cancel();if(ttsSrc){try{ttsSrc.stop()}catch{}}setDuck(false);toast('Alle geluiden gestopt')}
+
+/* ---------- soundboard (geluiden worden lokaal gesynthetiseerd; eigen bestanden in IndexedDB) ---------- */
+function mkBuf(dur,fn){const c=ensureCtx(),sr=c.sampleRate,n=Math.floor(dur*sr),b=c.createBuffer(1,n,sr),d=b.getChannelData(0);for(let i=0;i<n;i++)d[i]=Math.max(-1,Math.min(1,fn(i/sr,i/n)||0));return b}
+const env=(t,a,d)=>Math.min(1,t/a)*Math.exp(-t/d),tone=(f,t)=>Math.sin(2*Math.PI*f*t),saw=(f,t)=>2*((f*t)%1)-1,nz=()=>Math.random()*2-1;
+const arp=(notes,step,dec,dur)=>mkBuf(dur,t=>{let s=0;notes.forEach((f,i)=>{const u=t-i*step;if(u>=0)s+=(tone(f,u)*.5+saw(f,u)*.1)*env(u,.01,dec)*.4});return s});
+const SYN={
+ jingle:()=>arp([523.25,659.25,783.99,1046.5],.16,.5,2),
+ applaus:()=>mkBuf(3,(t,k)=>nz()*.45*(.6+.4*Math.sin(t*37)*Math.sin(t*23))*Math.min(1,t/.3)*Math.min(1,(1-k)*4)),
+ bell:()=>mkBuf(2.5,t=>(tone(880,t)*.5+tone(1760,t)*.2+tone(2640,t)*.1)*env(t,.002,.6)),
+ radioid:()=>mkBuf(1.2,t=>((t<.22)?tone(880,t):(t>.35&&t<.6)?tone(1320,t):0)*.4),
+ hit:()=>mkBuf(1.1,t=>[220,277.2,329.6,440].reduce((s,f)=>s+saw(f,t)*.12,0)*env(t,.005,.35)),
+ alert:()=>mkBuf(1.8,t=>saw(t%.6<.3?900:650,t)*.28*Math.min(1,(1.8-t)*4)),
+ laugh:()=>mkBuf(1.3,t=>saw(240+70*Math.sin(t*38),t)*.3*(Math.sin(t*20)>0?1:.15)*Math.min(1,(1.3-t)*3)),
+ intro:()=>arp([392,494,587,659,784,988,1175,1568],.14,.4,2.4),
+ stationid:()=>arp([659.25,783.99,987.77,783.99],.2,.7,2),
+ effect:()=>mkBuf(1.6,(t,k)=>(nz()*.55+tone(70-40*k,t)*.6)*Math.exp(-t*2.6)),
+ newsintro:()=>mkBuf(3,t=>{const n=[392,392,523.25,659.25,784],s=[0,.22,.44,.66,.9];let r=0;n.forEach((f,i)=>{const u=t-s[i];if(u>=0)r+=(saw(f,u)*.14+tone(f*2,u)*.1)*env(u,.01,i==4?1:.3)});return r})
+};
+const PAL=['#ff9d00','#22e58a','#00e5ff','#8b5cf6','#ffd23f','#ff5a36','#ff3b57','#ff7ad9','#5b8cff','#2de2c5'];
+const DEFS=[['jingle','JINGLE','🎺',0],['applaus','APPLAUS','👏',1],['radioid','RADIO ID','📻',2],['newsintro','NEWS INTRO','📰',3],['bell','BELL','🔔',4],['hit','HIT','🔥',5],['alert','ALERT','🚨',6],['laugh','LAUGH','😂',7],['intro','INTRO','🎵',8],['stationid','STATION ID','🎙️',9],['effect','EFFECT','💥',0]]
+ .map((a,i)=>({id:a[0],name:a[1],icon:a[2],color:PAL[a[3]],vol:1,key:'F'+(i+1),bank:0,syn:a[0]}));
+let sounds=LS.get('sounds',DEFS),banks=LS.get('banks',['Hoofd','Extra']),curBank=0;
+const saveSounds=()=>LS.set('sounds',sounds);
+const bufCache={},act={};
+const idb=()=>new Promise((res,rej)=>{const r=indexedDB.open('radiostudio',1);r.onupgradeneeded=()=>r.result.createObjectStore('files');r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error)});
+async function idbPut(k,v){const d=await idb();return new Promise((res,rej)=>{const t=d.transaction('files','readwrite');t.objectStore('files').put(v,k);t.oncomplete=res;t.onerror=()=>rej(t.error)})}
+async function idbGet(k){const d=await idb();return new Promise((res,rej)=>{const r=d.transaction('files').objectStore('files').get(k);r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error)})}
+async function idbDel(k){const d=await idb();return new Promise(res=>{const t=d.transaction('files','readwrite');t.objectStore('files').delete(k);t.oncomplete=res})}
+async function getBuf(s){if(bufCache[s.id])return bufCache[s.id];let b;
+ if(s.syn&&SYN[s.syn])b=SYN[s.syn]();else{const f=await idbGet(s.id);if(!f)throw new Error('Bestand ontbreekt');b=await ensureCtx().decodeAudioData(await f.arrayBuffer())}
+ return bufCache[s.id]=b}
+async function playSound(id){const s=sounds.find(x=>x.id===id);if(!s)return;ensureCtx();if(act[id]){stopSound(id);return}
+ try{const b=await getBuf(s),src=ctx.createBufferSource(),g=ctx.createGain();src.buffer=b;g.gain.value=s.vol??1;src.connect(g).connect(bus.sb);
+  src.onended=()=>{delete act[id];paintPads()};act[id]={src,g};src.start();paintPads()}catch(e){toast('Kan "'+s.name+'" niet afspelen: '+e.message)}}
+function stopSound(id){const a=act[id];if(!a)return;try{a.g.gain.setTargetAtTime(0,ctx.currentTime,.02);a.src.stop(ctx.currentTime+.1)}catch{}}
+const paintPads=()=>$$('.pad[data-id]').forEach(p=>p.classList.toggle('on',!!act[p.dataset.id]));
+function drawWave(cv,b){const w=cv.width=cv.clientWidth*2||300,h=cv.height=52,g=cv.getContext('2d'),d=b.getChannelData(0),st=Math.floor(d.length/w);g.fillStyle='rgba(255,255,255,.75)';
+ for(let x=0;x<w;x+=3){let m=0;for(let i=0;i<st;i+=Math.max(1,st>>5))m=Math.max(m,Math.abs(d[x*st+i]||0));const bh=Math.max(2,m*h);g.fillRect(x,(h-bh)/2,2,bh)}}
+async function addFiles(files){for(const f of files){if(!/^audio\//.test(f.type)&&!/\.(wav|mp3|ogg)$/i.test(f.name))continue;const id='u'+uid();
+  try{await idbPut(id,f);const s={id,name:f.name.replace(/\.[^.]+$/,'').slice(0,18).toUpperCase(),icon:'🔊',color:PAL[sounds.length%PAL.length],vol:1,key:'',bank:curBank};await getBuf(s);sounds.push(s)}catch(e){toast('Kan '+f.name+' niet laden (WAV/MP3/OGG?)');idbDel(id)}}
+ saveSounds();render()}
+function editSound(id){const s=sounds.find(x=>x.id===id);if(!s)return;const d=$('#dlg');
+ d.innerHTML=`<h3>Sound bewerken</h3><label class="fld"><span>Naam</span><input id="e_n" type="text" value="${esc(s.name)}"></label><label class="fld"><span>Icoon (emoji)</span><input id="e_i" type="text" value="${esc(s.icon)}"></label>
+ <label class="fld"><span>Kleur</span><input id="e_c" type="color" value="${s.color}"></label><label class="fld"><span>Volume</span><input id="e_v" type="range" min="0" max="1.5" step=".05" value="${s.vol}"></label>
+ <label class="fld"><span>Sneltoets (bijv. F5, of laat leeg)</span><input id="e_k" type="text" value="${esc(s.key)}"></label>
+ <label class="fld"><span>Pagina</span><select id="e_b">${banks.map((b,i)=>`<option value="${i}" ${s.bank==i?'selected':''}>${esc(b)}</option>`).join('')}</select></label>
+ <div class="row sb"><button class="btn bad" data-act="sdel" data-id="${id}">Verwijderen</button><span class="row"><button class="btn" data-act="dclose">Annuleren</button><button class="btn pri" data-act="ssave" data-id="${id}">Opslaan</button></span></div>`;d.showModal()}
+
+/* ---------- demo-muziek (gesynthetiseerd) + wachtrij ---------- */
+const DEMO=[['Neon Harbour','The Midnight Signals',214,118],['Glass Skyline','Luna Vega',187,124],['Afterglow Drive','Kite & Coral',201,110],['Polder Nights','Wadden Wave',176,128],['Golden Hour','Solstice Club',232,102],['Static Hearts','Analog Youth',195,122],['Tidal','Aurora Lane',224,96],['Elfsteden','Friese Bas',208,126]];
+const mkT=a=>({id:uid(),title:a[0],artist:a[1],dur:a[2]*1000,bpm:a[3],album:'Demo Sessies'});
+let Q=LS.get('queue',null)||DEMO.map(mkT),HIST=LS.get('history',[]);
+const saveQ=()=>LS.set('queue',Q);
+let np={title:'Geen nummer',artist:'—',album:'',cover:cover('idle'),dur:0,pos:0,playing:false,ts:Date.now(),src:'demo',id:'',bpm:120};
+const curPos=()=>np.dur?Math.min(np.dur,np.pos+(np.playing?Date.now()-np.ts:0)):0;
+function syncNp(){if(!isObs())LS.set('np',{...np,cover:np.cover.startsWith('data:')?np.cover:np.cover})}
+function loadTrack(t,play){np={...np,src:'demo',title:t.title,artist:t.artist,album:t.album||'Demo Sessies',cover:cover(t.artist+t.title),dur:t.dur,pos:0,ts:Date.now(),playing:!!play,id:t.id,bpm:t.bpm};
+ play?startSynth():stopSynth();syncNp();paint()}
+function pushHist(){if(!np.id||np.title==='Geen nummer')return;HIST.unshift({title:np.title,artist:np.artist,t:Date.now(),src:np.src});HIST=HIST.slice(0,40);LS.set('history',HIST)}
+let synth=null;
+const nzBuf=()=>{const c=ensureCtx(),b=c.createBuffer(1,c.sampleRate*.2,c.sampleRate),d=b.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=nz();return b};
+function startSynth(){stopSynth();const c=ensureCtx(),nb=nzBuf();let step=0,next=c.currentTime+.05;const sc=[0,3,5,7,10,12,15],root=[55,65.4,49,73.4];
+ const env2=(g,t,a,d,pk)=>{g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(pk,t+a);g.gain.exponentialRampToValueAtTime(.0001,t+a+d)};
+ synth=setInterval(()=>{const dt=60/(np.bpm||120)/4;while(next<c.currentTime+1.2){const s=step%16,bar=Math.floor(step/16)%4,t=next;
+  if(s%4===0){const o=c.createOscillator(),g=c.createGain();o.frequency.setValueAtTime(160,t);o.frequency.exponentialRampToValueAtTime(42,t+.13);env2(g,t,.003,.3,.9);o.connect(g).connect(bus.music);o.start(t);o.stop(t+.35)}
+  if(s%2===1){const n=c.createBufferSource(),f=c.createBiquadFilter(),g=c.createGain();n.buffer=nb;f.type='highpass';f.frequency.value=7000;env2(g,t,.002,.05,.18);n.connect(f).connect(g).connect(bus.music);n.start(t);n.stop(t+.1)}
+  if(s===4||s===12){const n=c.createBufferSource(),f=c.createBiquadFilter(),g=c.createGain();n.buffer=nb;f.type='bandpass';f.frequency.value=1800;env2(g,t,.002,.14,.5);n.connect(f).connect(g).connect(bus.music);n.start(t);n.stop(t+.2)}
+  if([0,3,6,10,14].includes(s)){const o=c.createOscillator(),f=c.createBiquadFilter(),g=c.createGain();o.type='sawtooth';o.frequency.value=root[bar];f.type='lowpass';f.frequency.value=380;env2(g,t,.01,.3,.55);o.connect(f).connect(g).connect(bus.music);o.start(t);o.stop(t+.4)}
+  if(s%2===0){const o=c.createOscillator(),g=c.createGain();o.type='triangle';o.frequency.value=root[bar]*4*Math.pow(2,sc[(step*3+bar*2)%7]/12);env2(g,t,.01,.22,.09);o.connect(g).connect(bus.music);o.start(t);o.stop(t+.3)}
+  next+=dt;step++}},350)}
+function stopSynth(){clearInterval(synth);synth=null}
+function demoToggle(){ensureCtx();if(np.src!=='demo')useSource('demo');if(!np.id)loadTrack(Q[0],false);np.pos=curPos();np.playing=!np.playing;np.ts=Date.now();np.playing?startSynth():stopSynth();syncNp();paint()}
+async function demoNext(){const wp=np.playing;if(cfg.crossfade&&wp){await fadeTo(0,1200)}pushHist();Q.shift();if(Q.length<2)Q.push(...DEMO.map(mkT).sort(()=>Math.random()-.5));saveQ();loadTrack(Q[0],wp);if(cfg.crossfade&&wp)fadeTo(1,1200);if(route()==='playlist'||route()==='studio'||route()==='dashboard')render()}
+function demoPrev(){if(curPos()>3000||!HIST.length){np.pos=0;np.ts=Date.now();syncNp();return}const h=HIST.shift();LS.set('history',HIST);Q.unshift(mkT([h.title,h.artist,200,np.bpm]));saveQ();loadTrack(Q[0],np.playing);render()}
+const P={toggle(){ensureCtx();np.src==='spotify'&&SP.player?SP.player.togglePlay():demoToggle()},next(){np.src==='spotify'&&SP.player?SP.player.nextTrack():demoNext()},prev(){np.src==='spotify'&&SP.player?SP.player.previousTrack():demoPrev()},
+ seek(f){const ms=Math.floor(np.dur*f);if(np.src==='spotify'&&SP.player)SP.player.seek(ms);else{np.pos=ms;np.ts=Date.now();syncNp()}}};
+function useSource(s){if(s==='spotify'){if(!SP.player){toast('Log eerst in bij Spotify');return}if(np.src==='demo'&&np.playing){np.playing=false;stopSynth()}np.src='spotify';SP.player.getCurrentState().then(spState)}
+ else{if(SP.player&&np.src==='spotify')SP.player.pause();np.src='demo';loadTrack(Q[0]||mkT(DEMO[0]),false)}render()}
+
+/* ---------- Spotify (PKCE, alleen frontend) ---------- */
+const SP={tok:LS.get('sptok',null),player:null,dev:null,user:null,err:''};
+const b64u=b=>btoa(String.fromCharCode(...new Uint8Array(b))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+const spRedirect=()=>cfg.spRedirect||(location.origin+location.pathname);
+async function spLogin(){if(!cfg.spClient){toast('Vul eerst je Spotify Client ID in bij Instellingen');go('settings');return}
+ const v=b64u(crypto.getRandomValues(new Uint8Array(48)));LS.set('spver',v);const ch=b64u(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(v)));
+ location.href='https://accounts.spotify.com/authorize?'+new URLSearchParams({client_id:cfg.spClient,response_type:'code',redirect_uri:spRedirect(),scope:'streaming user-read-email user-read-private user-read-playback-state user-modify-playback-state user-read-currently-playing',code_challenge_method:'S256',code_challenge:ch})}
+async function spExchange(code){try{const r=await fetch('https://accounts.spotify.com/api/token',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams({grant_type:'authorization_code',code,redirect_uri:spRedirect(),client_id:cfg.spClient,code_verifier:LS.get('spver','')})});
+ const j=await r.json();if(!j.access_token)throw new Error(j.error_description||j.error);SP.tok={access:j.access_token,refresh:j.refresh_token,exp:Date.now()+j.expires_in*1000};LS.set('sptok',SP.tok);toast('Spotify gekoppeld ✔')}catch(e){toast('Spotify login mislukt: '+e.message)}}
+async function spToken(){const t=SP.tok;if(!t)return null;if(Date.now()<t.exp-60000)return t.access;
+ try{const r=await fetch('https://accounts.spotify.com/api/token',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams({grant_type:'refresh_token',refresh_token:t.refresh,client_id:cfg.spClient})});const j=await r.json();if(!j.access_token)throw 0;
+  SP.tok={access:j.access_token,refresh:j.refresh_token||t.refresh,exp:Date.now()+j.expires_in*1000};LS.set('sptok',SP.tok);return SP.tok.access}catch{spLogout(true);return null}}
+function spLogout(q){SP.tok=null;LS.set('sptok',null);try{SP.player?.disconnect()}catch{}SP.player=null;SP.user=null;if(np.src==='spotify')np.src='demo';if(!q)toast('Uitgelogd bij Spotify');render()}
+async function spApi(path,method='GET',body){const t=await spToken();if(!t)throw new Error('Niet ingelogd');const r=await fetch('https://api.spotify.com/v1'+path,{method,headers:{Authorization:'Bearer '+t,...(body?{'Content-Type':'application/json'}:{})},body:body?JSON.stringify(body):undefined});
+ if(r.status===204)return null;if(!r.ok)throw new Error('Spotify fout '+r.status);const x=await r.text();return x?JSON.parse(x):null}
+function spState(s){if(!s||!s.track_window?.current_track)return;const t=s.track_window.current_track,changed=np.id!==t.id;if(np.src==='demo'&&np.playing){np.playing=false;stopSynth()}
+ if(changed)pushHist();np={...np,src:'spotify',title:t.name,artist:t.artists.map(a=>a.name).join(', '),album:t.album.name,cover:t.album.images[0]?.url||cover(t.name),dur:s.duration,pos:s.position,playing:!s.paused,ts:Date.now(),id:t.id};syncNp();paint();if(changed&&['playlist','dashboard'].includes(route()))render()}
+function spVol(){if(SP.player&&np.src==='spotify')SP.player.setVolume(Math.max(0,Math.min(1,(M.mute.music||M.mute.master?0:M.music*M.master)*duck*fade))).catch(()=>{})}
+function spInitPlayer(){if(!SP.tok||SP.player||isObs())return;
+ const mk=()=>{const pl=new Spotify.Player({name:cfg.station+' Studio',getOAuthToken:cb=>spToken().then(t=>t&&cb(t)),volume:.7});SP.player=pl;
+  pl.addListener('ready',({device_id})=>{SP.dev=device_id;toast('Spotify-speler klaar');render()});
+  pl.addListener('not_ready',()=>{SP.dev=null});pl.addListener('player_state_changed',spState);
+  ['initialization_error','authentication_error','account_error','playback_error'].forEach(e=>pl.addListener(e,({message})=>{SP.err=e+': '+message;toast('Spotify: '+message);if(e==='authentication_error')render()}));pl.connect()};
+ if(window.Spotify){mk();return}window.onSpotifyWebPlaybackSDKReady=mk;const s=document.createElement('script');s.src='https://sdk.scdn.co/spotify-player.js';s.onerror=()=>toast('Spotify SDK kon niet laden');document.head.appendChild(s)}
+async function spMe(){try{SP.user=await spApi('/me')}catch(e){SP.err=e.message}if(route()==='spotify')render()}
+async function spTransfer(){if(!SP.dev)return toast('Spotify-speler is nog niet klaar');try{await spApi('/me/player','PUT',{device_ids:[SP.dev],play:false});useSource('spotify')}catch(e){toast(e.message)}}
+const spParse=u=>{u=u.trim();let m=u.match(/spotify\.com\/(?:intl-[a-z]+\/)?(track|album|playlist|artist)\/([A-Za-z0-9]+)/)||u.match(/spotify:(track|album|playlist|artist):([A-Za-z0-9]+)/);return m?{type:m[1],uri:`spotify:${m[1]}:${m[2]}`}:null};
+async function spPlayLink(){const p=spParse($('#splink')?.value||'');if(!p)return toast('Plak een Spotify-link (track, album, playlist of artiest)');if(!SP.dev)return toast('Spotify-speler is nog niet klaar');
+ try{await spApi('/me/player/play?device_id='+SP.dev,'PUT',p.type==='track'?{uris:[p.uri]}:{context_uri:p.uri});useSource('spotify')}catch(e){toast(e.message)}}
+async function spAddQueue(){const p=spParse($('#splink')?.value||'');if(!p||p.type!=='track')return toast('Plak een link naar een nummer (track)');try{await spApi('/me/player/queue?uri='+encodeURIComponent(p.uri)+(SP.dev?'&device_id='+SP.dev:''),'POST');toast('Toegevoegd aan Spotify-wachtrij')}catch(e){toast(e.message)}}
+setInterval(async()=>{if(!isObs()||!SP.tok)return;if(Date.now()-(LS.get('np',{}).ts||0)<15000)return;try{const s=await spApi('/me/player/currently-playing');if(s?.item)np={...np,src:'spotify',title:s.item.name,artist:s.item.artists.map(a=>a.name).join(', '),album:s.item.album.name,cover:s.item.album.images[0]?.url,dur:s.item.duration_ms,pos:s.progress_ms,playing:s.is_playing,ts:Date.now(),id:s.item.id}}catch{}},4000);
+
+/* ---------- timer ---------- */
+let T=LS.get('timer',{mode:'countdown',ms:300000,running:false,at:Date.now(),preset:300000,label:'NUMMER EINDIGT OVER'});
+function normT(){if(T.running){const d=Date.now()-T.at;T.at=Date.now();if(T.mode==='countdown'||T.mode==='segment'){T.ms=Math.max(0,T.ms-d);if(T.ms===0){T.running=false;saveT();timerDone()}}else T.ms+=d}}
+const saveT=()=>LS.set('timer',T);
+const showMs=()=>AIR.on?Date.now()-AIR.start:0;
+function timerDone(){ensureCtx();playSound('bell');toast('⏱ Timer afgelopen')}
+function tToggle(){if(T.mode==='clock')return;if(T.mode==='show')return air();if(!T.running&&(T.mode==='countdown'||T.mode==='segment')&&T.ms<=0)T.ms=T.preset;T.running=!T.running;T.at=Date.now();saveT();paint()}
+function tReset(){T.running=false;T.ms=(T.mode==='countdown'||T.mode==='segment')?T.preset:0;T.at=Date.now();saveT();paint()}
+function tAdd(ms){normT();T.ms+=ms;if(T.mode==='countdown'||T.mode==='segment')T.preset=Math.max(T.preset,T.ms);T.at=Date.now();saveT();paint()}
+function parseHMS(s){const p=String(s).trim().split(':').map(Number);if(p.some(isNaN))return null;let ms=0;for(const x of p)ms=ms*60+x;return ms*1000}
+const tLabel=()=>({clock:'KLOK',stopwatch:'STOPWATCH',countdown:'COUNTDOWN',segment:T.label,show:AIR.on?'LIVE':'SHOW TIMER'}[T.mode]);
+function tDisp(){normT();return T.mode==='clock'?new Date().toLocaleTimeString('nl-NL'):T.mode==='show'?fmtH(showMs()):T.mode==='segment'?fmt(T.ms):fmtH(T.ms)}
+function tClass(){if(!(T.mode==='countdown'||T.mode==='segment'))return'';return T.ms<=10000&&(T.running||T.ms===0)?'crit':T.ms<=30000&&T.running?'warn':''}
+function air(){AIR.on=!AIR.on;if(AIR.on)AIR.start=Date.now();LS.set('air',AIR);logEv(AIR.on?'ON AIR — '+cfg.show:'OFF AIR');paint()}
+
+/* ---------- show clock + logboek ---------- */
+const SCD=[['20:00','START SHOW'],['20:05','MUZIEK'],['20:09','JINGLE'],['20:10','MUZIEK'],['20:14','NIEUWS'],['20:17','MUZIEK'],['20:21','WEER'],['20:23','MUZIEK']].map(a=>({id:uid(),t:a[0],label:a[1]}));
+let SC=LS.get('showclock',SCD);const saveSC=()=>LS.set('showclock',SC);
+const toM=t=>{const[h,m]=t.split(':').map(Number);return h*60+m};
+function showState(){const n=new Date(),mins=n.getHours()*60+n.getMinutes()+n.getSeconds()/60,it=[...SC].map(i=>({...i,m:toM(i.t)})).sort((a,b)=>a.m-b.m);let cur=null,next=null;
+ for(const i of it){if(i.m<=mins)cur=i;else{next=i;break}}if(!next&&it.length)next={...it[0],m:it[0].m+1440};return{cur,next,inMs:next?(next.m-mins)*60000:0,it}}
+let LOG=LS.get('log',[]);function logEv(t){LOG.unshift({t:Date.now(),x:t});LOG=LOG.slice(0,40);LS.set('log',LOG)}
+
+/* ---------- microfoon ---------- */
+let micState='uit',micMon=false;
+async function micStart(devId){try{micState='wachten';paint();ensureCtx();if(micStream)micStream.getTracks().forEach(t=>t.stop());
+ micStream=await navigator.mediaDevices.getUserMedia({audio:{deviceId:devId?{exact:devId}:undefined,echoCancellation:true,noiseSuppression:true}});
+ if(micNode)micNode.disconnect();micNode=ctx.createMediaStreamSource(micStream);micNode.connect(bus.mic);micMonSet();micState='actief';applyMix();
+ const devs=(await navigator.mediaDevices.enumerateDevices()).filter(d=>d.kind==='audioinput');const s=$('#micdev');if(s)s.innerHTML=devs.map(d=>`<option value="${d.deviceId}">${esc(d.label||'Microfoon')}</option>`).join('')}
+ catch(e){micState=e.name==='NotAllowedError'?'geweigerd':'fout';toast('Microfoon: '+(e.name==='NotAllowedError'?'toegang geweigerd — sta de microfoon toe in je browser':e.message))}paint()}
+function micStop(){micStream?.getTracks().forEach(t=>t.stop());micStream=null;micNode?.disconnect();micNode=null;micState='uit';paint()}
+function micToggle(){micStream?micStop():micStart()}
+function micMonSet(){if(!bus.mic)return;try{bus.mic.disconnect(bus.master)}catch{}if(micMon)bus.mic.connect(bus.master)}
+
+/* ---------- stream + luisteraars ---------- */
+let STR={state:'idle',msg:'',stalls:0,listeners:null,demoL:28};
+const sEl=()=>$('#streamEl');
+function streamPlay(){const a=sEl();if(!cfg.streamUrl){STR.msg='Geen stream-URL ingesteld (Instellingen → Stream).';STR.state='offline';paint();return}
+ STR.state='connecting';STR.msg='';a.src=cfg.streamUrl;a.play().catch(e=>{STR.state='offline';STR.msg=streamErr();paint()});paint()}
+function streamStop(){const a=sEl();a.pause();a.removeAttribute('src');a.load();STR.state='idle';probe();paint()}
+function streamErr(){if(location.protocol==='https:'&&/^http:/.test(cfg.streamUrl))return'Geblokkeerd: je pagina draait op https maar de stream is http (mixed content). Gebruik een https-stream of een proxy.';return'Stream niet bereikbaar of geblokkeerd (CORS/netwerk). Controleer de URL, of zet een proxy/backend ervoor.'}
+async function probe(){if(!cfg.streamUrl||STR.state==='online'||STR.state==='connecting')return;const ac=new AbortController();try{await fetch(cfg.streamUrl,{mode:'no-cors',signal:ac.signal});STR.state='reach';ac.abort()}catch(e){if(e.name!=='AbortError'){STR.state='offline';STR.msg=streamErr()}}paint()}
+async function listeners(){if(cfg.statusUrl){try{const j=await(await fetch(cfg.statusUrl)).json();let s=j.icestats?.source;s=Array.isArray(s)?s:s?[s]:[];STR.listeners=s.reduce((a,x)=>a+(x.listeners||0),0);STR.lsrc='live';return}catch(e){STR.lsrc='fout'}}
+ STR.demoL=Math.max(8,Math.min(60,STR.demoL+Math.round((Math.random()-.5)*4)));STR.listeners=STR.demoL;STR.lsrc='demo'}
+function streamWire(){const a=sEl();a.addEventListener('playing',()=>{STR.state='online';STR.msg='';paint()});a.addEventListener('waiting',()=>{STR.stalls++;paint()});a.addEventListener('error',()=>{if(a.getAttribute('src')){STR.state='offline';STR.msg=streamErr();paint()}});a.addEventListener('pause',()=>{if(STR.state==='online'){STR.state='idle';paint()}})}
+const streamTxt=()=>({online:'🟢 STREAM ONLINE',reach:'🟡 STREAM BEREIKBAAR',connecting:'🟡 VERBINDEN…',offline:'🔴 STREAM OFFLINE',idle:cfg.streamUrl?'🔴 STREAM OFFLINE':'⚪ GEEN STREAM'}[STR.state]);
+
+/* ---------- nieuws / weer / verkeer / AI / TTS ---------- */
+const greet=()=>{const h=new Date().getHours();return h<6?'Goedenacht':h<12?'Goedemorgen':h<18?'Goedemiddag':'Goedenavond'};
+const DEMO_NEWS=[{t:'Waterschappen houden extra oog op het waterpeil na de regenval van afgelopen dagen',d:'Er is geen direct gevaar, maar beheerders controleren de gemalen extra goed.'},{t:'Nieuwe fietsroute tussen twee Friese steden officieel geopend',d:'De route is ruim veertig kilometer lang en loopt grotendeels door natuurgebied.'},{t:'Regionale musea trekken deze maand meer bezoekers dan vorig jaar',d:'Vooral de familietentoonstellingen zijn populair.'},{t:'Treinreizigers krijgen volgende maand een nieuwe dienstregeling',d:'Op enkele trajecten rijden er vaker treinen.'},{t:'Lokale voetbalclub wint spannende derby in de slotminuten',d:'Een treffer in de negentigste minuut zorgde voor de beslissing.'},{t:'Zonnepanelen op schooldaken: steeds meer gemeenten doen mee',d:'De eerste scholen leveren inmiddels stroom terug aan het net.'}];
+const clean=h=>{try{return(new DOMParser().parseFromString(h||'','text/html').body.textContent||'').trim()}catch{return h||''}};
+async function getNews(){try{if(cfg.newsMode==='rss'){const j=await(await fetch('https://api.rss2json.com/v1/api.json?rss_url='+encodeURIComponent(cfg.newsFeed))).json();if(j.items?.length)return{src:'RSS',items:j.items.slice(0,8).map(i=>({t:clean(i.title),d:clean(i.description).slice(0,220)}))}}
+ if(cfg.newsMode==='json'){const j=await(await fetch(cfg.newsFeed)).json();const a=Array.isArray(j)?j:j.items||j.articles||[];if(a.length)return{src:'API',items:a.slice(0,8).map(i=>({t:clean(i.title),d:clean(i.description||i.summary||'').slice(0,220)}))}}}
+ catch(e){toast('Nieuwsbron niet bereikbaar — demo-nieuws gebruikt')}return{src:'DEMO',items:DEMO_NEWS}}
+const aiOn=()=>!!cfg.aiKey||/localhost|127\.0\.0\.1/.test(cfg.aiUrl);
+async function ai(prompt){const r=await fetch(cfg.aiUrl,{method:'POST',headers:{'Content-Type':'application/json',...(cfg.aiKey?{Authorization:'Bearer '+cfg.aiKey}:{})},body:JSON.stringify({model:cfg.aiModel,temperature:.7,messages:[{role:'system',content:`Je bent een ervaren Nederlandse radiopresentator bij ${cfg.station}. Schrijf uitsluitend de gesproken tekst: geen opmaak, geen lijstjes, geen regieaanwijzingen.`},{role:'user',content:prompt}]})});
+ if(!r.ok)throw new Error('HTTP '+r.status);const j=await r.json();const t=j.choices?.[0]?.message?.content;if(!t)throw new Error('leeg antwoord');return t.trim()}
+const STY={short:['een kort bulletin van ongeveer 20 seconden',2],normal:['een normaal bulletin van ongeveer 45 seconden',4],long:['een uitgebreid bulletin van ongeveer 90 seconden',6],breaking:['een urgente breaking-news-melding van maximaal 20 seconden',1]};
+async function newsScript(style='normal'){const n=await getNews(),[desc,k]=STY[style]||STY.normal,it=n.items.slice(0,k);
+ if(aiOn()){try{return await ai(`Schrijf ${desc} op basis van deze koppen:\n${it.map(i=>'- '+i.t+(i.d?' ('+i.d+')':'')).join('\n')}\nBegin met "${greet()}".`)}catch(e){toast('AI mislukt ('+e.message+') — sjabloon gebruikt')}}
+ if(style==='breaking')return`Even onderbreken wij ons programma voor breaking news. ${it[0].t}. ${it[0].d||''} Blijf luisteren naar ${cfg.station} voor meer informatie.`;
+ return`${greet()}! Dit is het laatste nieuws van vandaag. ${it.map((i,x)=>(x===it.length-1&&it.length>1?'Tot slot: ':'')+i.t+'. '+(style==='long'?i.d+' ':'')).join('')}Dat was het nieuws.`}
+const WC={0:['Onbewolkt','☀️'],1:['Overwegend zonnig','🌤️'],2:['Half bewolkt','⛅'],3:['Bewolkt','☁️'],45:['Mistig','🌫️'],48:['Rijpmist','🌫️'],51:['Lichte motregen','🌦️'],53:['Motregen','🌦️'],55:['Zware motregen','🌧️'],61:['Lichte regen','🌦️'],63:['Regen','🌧️'],65:['Zware regen','🌧️'],71:['Lichte sneeuw','🌨️'],73:['Sneeuw','🌨️'],75:['Zware sneeuw','❄️'],80:['Lichte buien','🌦️'],81:['Buien','🌧️'],82:['Zware buien','⛈️'],95:['Onweer','⛈️'],96:['Onweer met hagel','⛈️'],99:['Zwaar onweer','⛈️']};
+const wc=c=>WC[c]||WC[[...Object.keys(WC)].reverse().find(k=>+k<=c)]||['Wisselend','🌥️'];
+const DIR=['noorden','noordoosten','oosten','zuidoosten','zuiden','zuidwesten','westen','noordwesten'],dirOf=d=>DIR[Math.round(d/45)%8];
+let WX=null,wxAt=0;
+async function geo(){if(cfg.geoFor===cfg.city)return;const j=await(await fetch('https://geocoding-api.open-meteo.com/v1/search?count=1&language=nl&name='+encodeURIComponent(cfg.city))).json();
+ if(!j.results?.length)throw new Error('Plaats "'+cfg.city+'" niet gevonden');cfg.lat=j.results[0].latitude;cfg.lon=j.results[0].longitude;cfg.city=j.results[0].name;cfg.geoFor=cfg.city;saveCfg()}
+async function getWx(force){if(WX&&!force&&Date.now()-wxAt<6e5)return WX;await geo();
+ const j=await(await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${cfg.lat}&longitude=${cfg.lon}&current=temperature_2m,apparent_temperature,precipitation,weather_code,wind_speed_10m,wind_direction_10m&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_sum,precipitation_probability_max&timezone=auto&forecast_days=2&wind_speed_unit=kmh`)).json();
+ wxAt=Date.now();return WX=j}
+async function weatherScript(){const j=await getWx(),c=j.current,d=j.daily,r=Math.round;const t=wc(c.weather_code)[0].toLowerCase(),t0=wc(d.weather_code[0])[0].toLowerCase(),t1=wc(d.weather_code[1])[0].toLowerCase();
+ const fb=`En dan het weer. In ${cfg.city} is het momenteel ${r(c.temperature_2m)} graden en ${t}. Het voelt aan als ${r(c.apparent_temperature)} graden. De wind komt uit het ${dirOf(c.wind_direction_10m)} met ${r(c.wind_speed_10m)} kilometer per uur. Vandaag wordt het maximaal ${r(d.temperature_2m_max[0])} graden, ${t0}${d.precipitation_probability_max[0]>=40?' met kans op regen ('+d.precipitation_probability_max[0]+' procent)':''}. Morgen wordt het ${t1} bij ${r(d.temperature_2m_min[1])} tot ${r(d.temperature_2m_max[1])} graden.`;
+ if(aiOn()){try{return await ai('Schrijf een kort weerbericht (ca. 25 seconden) voor de regio '+cfg.city+' op basis van deze gegevens: '+fb)}catch(e){toast('AI mislukt — sjabloon gebruikt')}}return fb}
+const DEMO_TR=[{road:'A7',text:'Drachten richting Groningen: 4 kilometer file door een ongeval'},{road:'A32',text:'Leeuwarden richting Meppel: tijdelijk één rijstrook dicht, vertraging van 10 minuten'},{road:'A6',text:'Lelystad richting Emmeloord: stroef verkeer door werkzaamheden'},{road:'A12',text:'Utrecht richting Arnhem: file van 6 kilometer'}];
+async function getTraffic(){if(cfg.trafficUrl){try{const j=await(await fetch(cfg.trafficUrl)).json();const a=Array.isArray(j)?j:j.items||[];return{src:'API',items:a.map(i=>({road:i.road||i.weg||'',text:i.text||i.description||i.omschrijving||''}))}}catch{toast('Verkeers-API niet bereikbaar — demo-data gebruikt')}}return{src:'DEMO',items:DEMO_TR}}
+async function trafficScript(){const t=await getTraffic();if(!t.items.length)return`Dan het verkeer. Er zijn op dit moment geen meldingen voor ${cfg.region}.`;
+ const fb=`Dan het verkeer. In ${cfg.region} zijn momenteel ${t.items.length===1?'een melding':t.items.length+' meldingen'}. ${t.items.slice(0,4).map(i=>(i.road?'Op de '+i.road+': ':'')+i.text+'.').join(' ')} Rijd voorzichtig.`;
+ if(aiOn()){try{return await ai('Schrijf een kort verkeersbericht voor de regio '+cfg.region+' op basis van: '+fb)}catch{}}return fb}
+const intro=()=>`${greet()} en welkom bij ${cfg.station}. U luistert naar ${cfg.show}${cfg.host&&cfg.host!=='Presentator'?' met '+cfg.host:''}. Hieronder het laatste nieuws, het weer en het verkeer.`;
+const outro=()=>`Dat was het voor nu. Blijf luisteren naar ${cfg.station}. Tot zo!`;
+let hourSel={intro:1,news:1,weather:1,traffic:1,outro:1};
+async function hourScript(){const p=[];if(hourSel.intro)p.push(intro());if(hourSel.news)p.push(await newsScript('normal'));if(hourSel.weather){try{p.push(await weatherScript())}catch(e){toast('Weer: '+e.message)}}if(hourSel.traffic)p.push(await trafficScript());if(hourSel.outro)p.push(outro());return p.join('\n\n')}
+let ttsSrc=null;
+async function speak(text){if(!text.trim())return toast('Geen tekst om voor te lezen');stopSpeak(true);setDuck(true);logEv('Voorgelezen: '+text.slice(0,40)+'…');
+ if(cfg.ttsUrl){try{ensureCtx();const r=await fetch(cfg.ttsUrl,{method:'POST',headers:{'Content-Type':'application/json',...(cfg.ttsKey?{Authorization:'Bearer '+cfg.ttsKey}:{})},body:JSON.stringify({text,voice:cfg.voice,language:'nl'})});if(!r.ok)throw new Error('HTTP '+r.status);
+   const blob=await r.blob();window.lastTts=blob;const b=await ctx.decodeAudioData(await blob.arrayBuffer());ttsSrc=ctx.createBufferSource();ttsSrc.buffer=b;ttsSrc.connect(bus.tts);ttsSrc.onended=()=>{setDuck(false);ttsSrc=null;paint()};ttsSrc.start();return}
+  catch(e){toast('TTS-API mislukt ('+e.message+') — browserstem gebruikt')}}
+ const u=new SpeechSynthesisUtterance(text);u.lang='nl-NL';u.rate=cfg.rate;u.volume=M.mute.tts?0:M.tts*(M.mute.master?0:1);const v=speechSynthesis.getVoices().find(x=>x.name===cfg.voice)||speechSynthesis.getVoices().find(x=>x.lang?.startsWith('nl'));if(v)u.voice=v;
+ u.onend=u.onerror=()=>{setDuck(false)};speechSynthesis.speak(u)}
+function stopSpeak(quiet){speechSynthesis.cancel();try{ttsSrc?.stop()}catch{}ttsSrc=null;if(!quiet)setDuck(false)}
+function setScript(t){$$('.script').forEach(x=>x.value=t)}
+const getScript=()=>$('.script')?.value||'';
+async function run(label,fn,speakIt){toast('⏳ '+label+'…');try{const t=await fn();setScript(t);logEv(label);if(speakIt)speak(t)}catch(e){toast('Mislukt: '+e.message)}}
+let SCHED_LAST='';
+function schedTick(){const n=new Date();if(n.getSeconds()!==0)return;const stamp=n.getHours()+':'+n.getMinutes();if(stamp===SCHED_LAST)return;
+ const every=cfg.sched==='30'?30:cfg.sched==='60'?60:0;if(every&&n.getMinutes()%every===0){SCHED_LAST=stamp;run('Automatisch uur',hourScript,cfg.autoSpeak)}
+ if(cfg.jingleEvery&&n.getMinutes()%cfg.jingleEvery===0){SCHED_LAST=stamp;playSound(cfg.jingleId)}}
+
+/* ---------- UI-componenten ---------- */
+const NAV=[['studio','🎛️','Studio'],['dashboard','📊','Dashboard'],['soundboard','🔊','Soundboard'],['spotify','🎧','Spotify'],['timer','⏱️','Timer'],['showclock','🕐','Show clock'],['playlist','📋','Wachtrij'],['ai','🤖','AI-uur'],['news','📰','Nieuws'],['weather','🌦️','Weer'],['traffic','🚗','Verkeer'],['settings','⚙️','Instellingen']];
+function drawNav(){$('#nav').innerHTML=`<div class="brand">${cfg.logo?`<img src="${cfg.logo}" alt="">`:'<div class="lg">📻</div>'}<span>${esc(cfg.station)}</span></div>`+NAV.map(n=>`<a href="#/${n[0]}" data-r="${n[0]}"><span>${n[1]}</span>${n[2]}</a>`).join('')+'<div class="sp"></div><a href="#/obs" data-r="obs"><span>📺</span>OBS-modus</a>'}
+const cNow=()=>`<section class="card np"><div class="cover-wrap"><div class="ring"></div><img class="cover" data-cover alt="Albumcover"></div><div>
+<span class="pill" data-f="npflag"><i class="dot"></i>NOW PLAYING</span><h2 data-f="title"></h2><p class="art" data-f="artist"></p><p class="mu" data-f="album"></p>
+<div class="time"><span data-f="elapsed">0:00</span><div class="bar" data-act="seek" role="slider" aria-label="Voortgang"><i data-prog></i></div><span data-f="remaining">-0:00</span></div>
+<div class="ctl"><button class="btn" data-act="prev" aria-label="Vorige">⏮</button><button class="btn big" data-act="toggle" data-f="playicon" aria-label="Play/Pause">▶</button><button class="btn" data-act="next" aria-label="Volgende">⏭</button>
+<label class="row" style="flex:1;min-width:120px">🔊<input type="range" min="0" max="1" step=".01" value="${M.music}" data-in="mix" data-k="music" aria-label="Volume"></label></div>
+<div class="row" style="margin-top:12px"><button class="btn sm" data-act="fadeout">Fade out</button><button class="btn sm" data-act="fadein">Fade in</button><span class="tag" data-f="srctag"></span></div></div></section>`;
+const cTimer=()=>`<section class="card"><div class="row sb"><h3>TIMER</h3><span class="row">${['countdown','stopwatch','clock','segment','show'].map(m=>`<button class="btn sm ${T.mode===m?'on':''}" data-act="tmode" data-m="${m}">${{countdown:'Countdown',stopwatch:'Stopwatch',clock:'Klok',segment:'Segment',show:'Show'}[m]}</button>`).join('')}</span></div>
+<div class="tbox" data-tbox><div class="tlabel" data-f="tlabel"></div><div class="digits" data-f="timer">00:00:00</div></div>
+<div class="row" style="justify-content:center;margin-top:8px"><button class="btn pri" data-act="tstart" data-f="tstartl">▶ Start</button><button class="btn" data-act="treset">⟲ Reset</button><button class="btn" data-act="tadd" data-v="10">+10s</button><button class="btn" data-act="tadd" data-v="30">+30s</button><button class="btn" data-act="tadd" data-v="60">+1m</button></div>
+<div class="row" style="justify-content:center;margin-top:12px"><input type="text" id="tset" placeholder="Instellen: 3:42 of 1:24:37" style="max-width:210px"><button class="btn" data-act="tset">Instellen</button>
+${T.mode==='segment'?`<select data-in="tlabel" style="max-width:220px">${['NUMMER EINDIGT OVER','VOLGEND ITEM','INTRO COUNTDOWN','NIEUWS OVER','SHOW EINDIGT OVER'].map(l=>`<option ${T.label===l?'selected':''}>${l}</option>`).join('')}</select>`:''}</div>
+<div class="row sb mono mu" style="margin-top:14px;font-size:.85rem"><span>VOLGEND ITEM: <b data-f="nextItem" style="color:var(--tx)"></b></span><span data-f="nextIn"></span></div></section>`;
+const cStatus=()=>`<section class="card"><h3>LIVE STATUS</h3><div class="row" style="margin-bottom:14px"><span class="pill" data-f="airpill"><i class="dot"></i><span data-f="airtxt2">OFF AIR</span></span><span class="pill" data-f="streampill2"><i class="dot"></i><span data-f="stream"></span></span></div>
+<table><tr><td class="mu">Huidige show</td><td data-f="show"></td></tr><tr><td class="mu">Presentator</td><td data-f="host"></td></tr><tr><td class="mu">Volgend item</td><td><span data-f="nextItem"></span> <span class="mono mu" data-f="nextIn"></span></td></tr><tr><td class="mu">Volgend nummer</td><td data-f="nextTrack"></td></tr><tr><td class="mu">Tijd</td><td class="mono" data-f="clock"></td></tr><tr><td class="mu">Datum</td><td data-f="date"></td></tr><tr><td class="mu">Luisteraars</td><td><span data-f="listeners"></span> <span class="tag" data-f="lsrc"></span></td></tr><tr><td class="mu">Stream-health</td><td data-f="health"></td></tr></table></section>`;
+const cMixer=()=>`<section class="card"><h3>MINI MIXER</h3><div class="mix">${[['mic','MIC'],['music','MUSIC'],['sb','SOUNDBOARD'],['tts','AI VOICE'],['master','MASTER']].map(([k,l])=>`<div class="ch"><b>${l}</b><input type="range" min="0" max="1" step=".01" value="${M[k]}" data-in="mix" data-k="${k}" aria-label="${l}"><button class="btn sm mute ${M.mute[k]?'on':''}" data-act="mute" data-k="${k}">${M.mute[k]?'MUTE':'🔊'}</button></div>`).join('')}</div>
+<label class="fld ck" style="margin:12px 0 0"><input type="checkbox" data-in="cfg" data-k="duck" ${cfg.duck?'checked':''}><span>Muziek dempen tijdens AI-stem</span></label><label class="fld ck" style="margin:6px 0 0"><input type="checkbox" data-in="cfg" data-k="crossfade" ${cfg.crossfade?'checked':''}><span>Crossfade bij volgend demo-nummer</span></label></section>`;
+const cMic=()=>`<section class="card"><h3>MICROFOON</h3><div class="row sb"><span class="pill" data-f="micpill"><i class="dot"></i><span data-f="micstate"></span></span><span class="row"><button class="btn sm pri" data-act="mic" data-f="micbtn">Start</button><button class="btn sm mute ${M.mute.mic?'on':''}" data-act="mute" data-k="mic">Mute</button></span></div>
+<div class="vu" style="margin:14px 0"><i data-vu="mic"></i></div><label class="fld"><span>Ingang</span><select id="micdev" data-in="micdev"><option value="">Standaard microfoon</option></select></label>
+<label class="fld ck"><input type="checkbox" data-in="micmon" ${micMon?'checked':''}><span>Meeluisteren via speakers (kans op echo — gebruik een koptelefoon)</span></label>
+<p class="note">🔒 De browser vraagt toestemming voor de microfoon. Zonder toestemming werkt deze module niet.</p></section>`;
+const cViz=()=>`<section class="card"><div class="row sb"><h3>VISUALIZER</h3><span class="row">${[['spectrum','Spectrum'],['wave','Waveform'],['eq','Equalizer'],['vu','VU'],['bass','Bass']].map(([m,l])=>`<button class="btn sm ${cfg.viz===m?'on':''}" data-act="viz" data-m="${m}">${l}</button>`).join('')}</span></div><canvas class="viz" data-viz></canvas>
+<p class="note">Demo-muziek en soundboard worden live geanalyseerd. Spotify-audio is DRM-beveiligd, dus daar is de visualizer een simulatie.</p></section>`;
+const cSB=(n,full)=>{const list=sounds.filter(s=>s.bank===curBank).slice(0,n||99);return`<section class="card"><div class="row sb"><h3>SOUNDBOARD</h3><span class="row">${banks.map((b,i)=>`<button class="btn sm ${curBank===i?'on':''}" data-act="bank" data-i="${i}">${esc(b)}</button>`).join('')}${full?`<button class="btn sm" data-act="addbank">+ Pagina</button><button class="btn sm pri" data-act="upl">+ Sound</button><input type="file" id="fileIn" accept="audio/*,.wav,.mp3,.ogg" multiple hidden data-file>`:''}</span></div>
+<div class="pads">${list.map((s,i)=>`<button class="pad ${act[s.id]?'on':''}" style="--c:${s.color}" data-act="pad" data-id="${s.id}"><span class="ic">${esc(s.icon)}</span><b>${esc(s.name)}</b><kbd>${esc(s.key?kn(s.key):i<9?String(i+1):'')}</kbd><canvas data-wv="${s.id}"></canvas>${full?`<span class="ed" data-act="sedit" data-id="${s.id}">✎</span>`:''}</button>`).join('')||'<p class="mu">Leeg — sleep hier audiobestanden naartoe.</p>'}</div>
+${full?'<div class="drop">Sleep WAV / MP3 / OGG hierheen om eigen sounds toe te voegen (blijven lokaal in je browser).</div>':''}</section>`};
+const cQueue=full=>`<section class="card"><div class="row sb"><h3>WACHTRIJ</h3><button class="btn sm" data-act="next">⏭ Skip</button></div>
+${np.src==='spotify'?'<div class="warnbox">Spotify is de bron: de wachtrij van Spotify zelf wordt door Spotify beheerd. Deze lijst hoort bij de demo-bron.</div>':''}
+${Q.slice(0,full?99:4).map((t,i)=>`<div class="qi ${i===0?'first':''}" draggable="true" data-i="${i}"><img src="${cover(t.artist+t.title)}" alt=""><div class="t"><b>${esc(t.title)}</b><span class="mu">${esc(t.artist)}</span></div><span class="tag">${i===0?'NU':i===1?'VOLGENDE':i===2?'DAARNA':fmt(t.dur)}</span>${full&&i>0?`<button class="btn sm" data-act="qdel" data-i="${i}">✕</button>`:''}</div>`).join('')}
+${full?`<div class="row" style="margin-top:12px"><input type="text" id="qa" placeholder="Artiest" style="flex:1"><input type="text" id="qt" placeholder="Titel" style="flex:1"><input type="text" id="qd" placeholder="3:30" style="max-width:80px"><button class="btn pri" data-act="qadd">+ Toevoegen</button></div><p class="note">Sleep nummers om de volgorde te wijzigen.</p>`:''}</section>`;
+const cScript=()=>`<section class="card"><h3>RADIOSCRIPT</h3><textarea class="script" placeholder="Hier verschijnt het script. Je kunt het aanpassen voordat je het laat voorlezen." spellcheck="true"></textarea>
+<div class="row" style="margin-top:12px"><button class="btn pri" data-act="speak">🔊 Voorlezen</button><button class="btn" data-act="stopspeak">⏹ Stop</button><button class="btn" data-act="copy">Kopiëren</button><button class="btn" data-act="savetxt">Opslaan (.txt)</button>${cfg.ttsUrl?'<button class="btn" data-act="saveaudio">Audio opslaan</button>':''}</div>
+<p class="note">${cfg.ttsUrl?'Spraak via je TTS-API.':'Spraak via de stem van je browser (Instellingen → stem). Koppel een TTS-API om audiobestanden op te slaan.'} ${aiOn()?'AI: aan':'AI: sjabloon-modus (geen AI-sleutel ingesteld)'}</p></section>`;
+const cQuick=()=>`<section class="card"><h3>SNELLE ACTIES</h3><div class="row"><button class="btn pri" data-act="gnews" data-s="normal">🤖 GENEREER NIEUWS</button><button class="btn" data-act="gwx">🌦️ WEER</button><button class="btn" data-act="gtr">🚗 VERKEER</button><button class="btn" data-act="ghour">🤖 GENEREER UUR</button></div></section>`;
+const cStream=()=>`<section class="card"><h3>STREAM</h3><div class="row sb"><span class="pill" data-f="streampill3"><i class="dot"></i><span data-f="stream"></span></span><span class="row"><button class="btn sm pri" data-act="splay">Verbinden</button><button class="btn sm" data-act="sstop">Stop</button></span></div><p class="note" data-f="streammsg"></p></section>`;
+const cShow=()=>{const s=showState();return`<section class="card"><div class="row sb"><h3>SHOW CLOCK</h3><button class="btn sm" data-act="screset">Standaard</button></div><div class="list">${s.it.map(i=>`<div class="li ${s.cur&&s.cur.id===i.id?'cur':''} ${s.next&&s.next.id===i.id?'nx':''}"><span class="tm">${esc(i.t)}</span><b style="flex:1">${esc(i.label)}</b>${s.cur&&s.cur.id===i.id?'<span class="tag">NU</span>':''}${s.next&&s.next.id===i.id?'<span class="tag">VOLGEND</span>':''}<button class="btn sm" data-act="scdel" data-id="${i.id}" aria-label="Verwijderen">✕</button></div>`).join('')||'<p class="mu">Nog geen items.</p>'}</div>
+<div class="row" style="margin-top:12px"><input type="time" id="sct" style="max-width:130px"><input type="text" id="scl" placeholder="Bijv. NIEUWS" style="flex:1"><button class="btn pri" data-act="scadd">+ Toevoegen</button></div></section>`};
+const cRecent=()=>`<section class="card"><h3>RECENT GESPEELD</h3><div class="list">${HIST.slice(0,8).map(h=>`<div class="li"><span class="tm mu">${new Date(h.t).toLocaleTimeString('nl-NL',{hour:'2-digit',minute:'2-digit'})}</span><span style="flex:1"><b>${esc(h.title)}</b> <span class="mu">${esc(h.artist)}</span></span><span class="tag">${h.src}</span></div>`).join('')||'<p class="mu">Nog niets gespeeld.</p>'}</div></section>`;
+const cLog=()=>`<section class="card"><h3>SHOW-GESCHIEDENIS</h3><div class="list">${LOG.slice(0,8).map(l=>`<div class="li"><span class="tm mu">${new Date(l.t).toLocaleTimeString('nl-NL',{hour:'2-digit',minute:'2-digit'})}</span><span>${esc(l.x)}</span></div>`).join('')||'<p class="mu">Nog geen gebeurtenissen.</p>'}</div></section>`;
+const cJing=()=>`<section class="card"><h3>EXTRA’S</h3><div class="row"><button class="btn" data-act="stationid">🎙️ Station ID</button><button class="btn" data-act="fadeout">Fade out</button><button class="btn" data-act="fadein">Fade in</button><button class="btn" data-act="introcd">▶ Intro-countdown 10s</button></div>
+<div class="row" style="margin-top:12px"><span class="mu">Jingle-scheduler:</span><select data-in="cfg" data-k="jingleEvery" data-num style="max-width:150px">${[[0,'Uit'],[10,'Elke 10 min'],[15,'Elke 15 min'],[30,'Elke 30 min'],[60,'Elke 60 min']].map(([v,l])=>`<option value="${v}" ${cfg.jingleEvery==v?'selected':''}>${l}</option>`).join('')}</select>
+<select data-in="cfg" data-k="jingleId" style="max-width:170px">${sounds.map(s=>`<option value="${s.id}" ${cfg.jingleId===s.id?'selected':''}>${esc(s.name)}</option>`).join('')}</select></div></section>`;
+
+/* ---------- pagina's ---------- */
+const V={
+studio:()=>`<div class="g"><div class="s8">${cNow()}</div><div class="s4">${cTimer()}</div><div class="s8">${cSB(8)}</div><div class="s4">${cStatus()}</div><div class="s6">${cViz()}</div><div class="s6">${cMixer()}</div><div class="s4">${cMic()}</div><div class="s4">${cQueue(false)}</div><div class="s4">${cStream()}</div><div class="s4">${cQuick()}</div><div class="s8">${cScript()}</div></div>`,
+dashboard:()=>`<div class="g"><div class="s7">${cNow()}</div><div class="s5">${cStatus()}</div><div class="s5">${cTimer()}</div><div class="s7">${cShow()}</div><div class="s6">${cQueue(false)}</div><div class="s6">${cLog()}</div></div>`,
+soundboard:()=>`<div class="g"><div class="s12">${cSB(0,true)}</div><div class="s6">${cMixer()}</div><div class="s6">${cJing()}</div></div>`,
+spotify:()=>{const ok=!!SP.tok;return`<div class="g"><div class="s7">${cNow()}</div><div class="s5"><section class="card"><h3>SPOTIFY-KOPPELING</h3>
+${!cfg.spClient?'<div class="warnbox">Nog geen Client ID. Maak een app op developer.spotify.com/dashboard en vul het Client ID in bij <a href="#/settings">Instellingen</a>. Redirect URI om in te vullen: <b class="mono">'+esc(spRedirect())+'</b></div>':''}
+<div class="row"><span class="pill ${ok&&SP.dev?'ok':ok?'warn':'bad'}"><i class="dot"></i>${ok?(SP.dev?'Verbonden':'Verbinden…'):'Niet ingelogd'}</span>${SP.user?`<span class="mu">${esc(SP.user.display_name||SP.user.id)} · ${esc(SP.user.product||'')}</span>`:''}</div>
+${SP.user&&SP.user.product&&SP.user.product!=='premium'?'<div class="warnbox" style="margin-top:12px">Web Playback SDK werkt alleen met Spotify Premium.</div>':''}${SP.err?`<p class="note">Laatste fout: ${esc(SP.err)}</p>`:''}
+<div class="row" style="margin-top:14px">${ok?'<button class="btn" data-act="splogout">Uitloggen</button>':'<button class="btn pri" data-act="splogin">Inloggen met Spotify</button>'}
+<button class="btn ${np.src==='demo'?'on':''}" data-act="src" data-s="demo">Bron: Demo</button><button class="btn ${np.src==='spotify'?'on':''}" data-act="src" data-s="spotify">Bron: Spotify</button></div></section></div>
+<div class="s12"><section class="card"><h3>SPOTIFY-LINK AFSPELEN OF IN WACHTRIJ ZETTEN</h3><div class="row"><input type="text" id="splink" placeholder="https://open.spotify.com/playlist/… of /track/…" style="flex:1;min-width:220px"><button class="btn pri" data-act="splay1">▶ Afspelen</button><button class="btn" data-act="spq">+ Wachtrij</button></div></section></div><div class="s6">${cViz()}</div><div class="s6">${cRecent()}</div></div>`},
+timer:()=>`<div class="g"><div class="s8">${cTimer()}</div><div class="s4">${cStatus()}</div><div class="s12">${cShow()}</div></div>`,
+showclock:()=>`<div class="g"><div class="s7">${cShow()}</div><div class="s5">${cTimer()}</div></div>`,
+playlist:()=>`<div class="g"><div class="s7">${cQueue(true)}</div><div class="s5">${cRecent()}</div></div>`,
+ai:()=>`<div class="g"><div class="s5"><section class="card"><h3>AUTOMATISCH RADIO-UUR</h3><div class="flow">${[['intro','Intro'],['news','Nieuws'],['weather','Weer'],['traffic','Verkeer'],['outro','Afsluiting']].map(([k,l],i)=>`${i?'<span class="mu">↓</span>':''}<button class="btn sm ${hourSel[k]?'on':''}" data-act="hsel" data-k="${k}">${l}</button>`).join('')}</div>
+<div class="row" style="margin-top:16px"><button class="btn pri" data-act="ghour">🤖 GENEREER UUR</button><button class="btn" data-act="ghourspeak">Genereer + direct afspelen</button></div>
+<h3 style="margin-top:22px">SCHEDULER</h3><div class="row">${[['manual','Handmatig'],['30','Elke 30 min'],['60','Elke 60 min']].map(([v,l])=>`<button class="btn sm ${cfg.sched===v?'on':''}" data-act="sched" data-v="${v}">${l}</button>`).join('')}</div>
+<label class="fld ck" style="margin-top:12px"><input type="checkbox" data-in="cfg" data-k="autoSpeak" ${cfg.autoSpeak?'checked':''}><span>Automatisch voorlezen bij scheduler</span></label><p class="note">De scheduler draait zolang deze pagina open staat (bijv. in een OBS-dock of vast tabblad).</p></section></div><div class="s7">${cScript()}</div></div>`,
+news:()=>`<div class="g"><div class="s5"><section class="card"><h3>AI RADIONIEUWS</h3><div class="row"><button class="btn pri" data-act="gnews" data-s="normal">🤖 GENEREER NIEUWS</button></div><div class="row" style="margin-top:12px">${[['short','Kort bulletin'],['normal','Normaal'],['long','Uitgebreid'],['breaking','Breaking news']].map(([s,l])=>`<button class="btn sm" data-act="gnews" data-s="${s}">${l}</button>`).join('')}</div><h3 style="margin-top:20px">KOPPEN <span class="tag" id="nsrc"></span></h3><div class="list" id="nlist"><p class="mu">Laden…</p></div></section></div><div class="s7">${cScript()}</div></div>`,
+weather:()=>`<div class="g"><div class="s12"><section class="card"><div class="row sb"><h3>WEER — ${esc(cfg.city)}</h3><span class="row"><button class="btn sm" data-act="wxr">Vernieuwen</button><button class="btn pri" data-act="gwx">🌦️ WEER → SCRIPT</button></span></div><div id="wx"><p class="mu">Laden…</p></div></section></div><div class="s12">${cScript()}</div></div>`,
+traffic:()=>`<div class="g"><div class="s5"><section class="card"><div class="row sb"><h3>VERKEER — ${esc(cfg.region)}</h3><button class="btn pri" data-act="gtr">🚗 VERKEER → SCRIPT</button></div><div class="list" id="trl"><p class="mu">Laden…</p></div><p class="note">Er is geen gratis officiële verkeers-API. Zet in Instellingen je eigen JSON-endpoint (lijst met {road, text}). Tot die tijd zie je demo-data.</p></section></div><div class="s7">${cScript()}</div></div>`,
+settings:()=>{const I=(k,l,ph='',t='text')=>`<label class="fld"><span>${l}</span><input data-in="cfg" data-k="${k}" type="${t}" value="${esc(cfg[k])}" placeholder="${esc(ph)}" autocomplete="off"></label>`;const base=location.href.split('#')[0];
+ return`<div class="g"><div class="s6"><section class="card"><h3>RADIO</h3>${I('station','Zendernaam')}${I('show','Huidige show')}${I('host','Presentator')}<label class="fld"><span>Logo</span><input type="file" accept="image/*" data-file="logo"></label>
+<label class="fld"><span>Accentkleur</span><input type="color" data-in="cfg" data-k="accent" value="${cfg.accent}"></label><label class="fld"><span>Thema</span><select data-in="cfg" data-k="theme"><option value="dark" ${cfg.theme==='dark'?'selected':''}>Donker</option><option value="light" ${cfg.theme==='light'?'selected':''}>Licht</option></select></label>
+<label class="fld ck"><input type="checkbox" data-in="cfg" data-k="mini" ${cfg.mini?'checked':''}><span>Mini-player op alle pagina’s</span></label></section>
+<section class="card" style="margin-top:18px"><h3>STREAM</h3>${I('streamUrl','Stream-URL (Icecast/Shoutcast, bij voorkeur https)','https://…/stream')}${I('statusUrl','Luisteraars-URL (Icecast status-json.xml, optioneel)','https://…/status-json.xsl')}</section>
+<section class="card" style="margin-top:18px"><h3>LOCATIE</h3><div class="row"><div style="flex:1">${I('city','Plaats voor het weer')}</div><button class="btn" data-act="geo">Zoeken</button></div>${I('region','Regio voor verkeer')}${I('trafficUrl','Verkeers-API (JSON, optioneel)','https://…')}</section></div>
+<div class="s6"><section class="card"><h3>API’S</h3><div class="warnbox">Zonder eigen server staan sleutels alleen in <b>jouw</b> browser (localStorage). Zet ze nooit in de code of in GitHub. Wil je ze echt geheim houden? Gebruik een proxy (bijv. Cloudflare Worker) en vul die URL hieronder in.</div>
+<label class="fld"><span>Nieuwsbron</span><select data-in="cfg" data-k="newsMode"><option value="demo" ${cfg.newsMode==='demo'?'selected':''}>Demo</option><option value="rss" ${cfg.newsMode==='rss'?'selected':''}>RSS-feed (via rss2json)</option><option value="json" ${cfg.newsMode==='json'?'selected':''}>Eigen JSON-API</option></select></label>${I('newsFeed','Feed- of API-URL')}
+${I('aiUrl','AI-endpoint (OpenAI-compatibel)')}${I('aiKey','AI API-sleutel','sk-…','password')}${I('aiModel','AI-model')}${I('ttsUrl','TTS-endpoint (POST {text, voice} → audio)','https://…')}${I('ttsKey','TTS-sleutel (optioneel)','','password')}<label class="fld"><span>Browserstem</span><select id="voiceSel" data-in="cfg" data-k="voice"></select></label>
+<label class="fld"><span>Spreeksnelheid</span><input type="range" min=".6" max="1.5" step=".05" value="${cfg.rate}" data-in="cfg" data-k="rate"></label></section>
+<section class="card" style="margin-top:18px"><h3>SPOTIFY</h3>${I('spClient','Client ID','van developer.spotify.com/dashboard')}${I('spRedirect','Redirect URI (leeg = automatisch)',spRedirect())}<p class="note">Voeg exact deze Redirect URI toe in je Spotify-app: <b class="mono">${esc(spRedirect())}</b></p></section></div>
+<div class="s6"><section class="card"><h3>SNELTOETSEN</h3><table>${Object.keys(HKN).map(a=>`<tr><td>${HKN[a]}</td><td><kbd>${kn(HK[a])}</kbd></td><td><button class="btn sm" data-act="hk" data-a="${a}">Wijzig</button></td></tr>`).join('')}</table><p class="note">Sounds: cijfers 1–9 = pads op de huidige pagina; per sound kun je een eigen toets (bijv. F1) instellen.</p><button class="btn sm" data-act="hkreset" style="margin-top:8px">Standaard herstellen</button></section></div>
+<div class="s6"><section class="card"><h3>OBS BROWSER SOURCES</h3><div class="list">${[['obs','Fullscreen'],['obs/now-playing','Now Playing'],['obs/timer','Timer'],['obs/overlay','Radio overlay']].map(([r,l])=>`<div class="li"><b style="min-width:110px">${l}</b><span class="mono mu" style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(base)}#/${r}</span><button class="btn sm" data-act="cp" data-t="${esc(base)}#/${r}">Kopieer</button></div>`).join('')}</div>
+<p class="note">OBS-bronnen delen de instellingen en het nummer met je studio-pagina alleen binnen hetzelfde browserprofiel. Open de studio daarom als <b>Custom Browser Dock</b> in OBS (Docks → Aangepaste browserdocks), dan werkt alles gesynchroniseerd.</p></section>
+<section class="card" style="margin-top:18px"><h3>BACK-UP</h3><div class="row"><button class="btn" data-act="export">Exporteer instellingen</button><button class="btn" data-act="import">Importeer</button><button class="btn bad" data-act="wipe">Alles wissen</button></div><input type="file" id="impIn" accept=".json" hidden data-file="import"></section></div></div>`}
+};
+function vObs(r){const nx=`<div data-f="nextTrack"></div>`;
+ if(r==='obs/now-playing')return`<div class="onp"><img data-cover alt=""><div style="min-width:0"><span class="pill" data-f="npflag"><i class="dot"></i>NOW PLAYING</span><h2 data-f="title"></h2><p class="art" data-f="artist"></p><div class="bar" style="margin-top:10px"><i data-prog></i></div></div></div>`;
+ if(r==='obs/timer')return`<div class="ot"><div class="tbox" data-tbox><div class="tlabel" style="font-size:2.6vw" data-f="tlabel"></div><div class="digits" data-f="timer"></div></div></div>`;
+ if(r==='obs/overlay')return`<div class="ovl">${cfg.logo?`<img class="lg" src="${cfg.logo}" alt="">`:''}<span class="pill" data-f="airpill"><i class="dot"></i><span data-f="airtxt2"></span></span><img class="c" data-cover alt=""><div class="t"><h2 data-f="title"></h2><p class="art" data-f="artist"></p></div><div style="text-align:right"><div class="ck" data-f="clock"></div><div class="mu" style="font-size:14px">Straks: <span data-f="nextTrack"></span></div></div></div>`;
+ return`<div class="of"><div class="hd"><div class="row" style="gap:20px">${cfg.logo?`<img src="${cfg.logo}" alt="">`:''}<span class="stn" data-f="station"></span></div><span class="pill" data-f="airpill" style="font-size:2.4vh"><i class="dot"></i><span data-f="airtxt2"></span></span></div>
+ <div class="mid"><div class="cover-wrap"><div class="ring"></div><img class="cover" data-cover alt=""></div><div><h2 data-f="title"></h2><p class="art" data-f="artist"></p><div class="time" style="font-size:2.4vh"><span data-f="elapsed"></span><div class="bar"><i data-prog></i></div><span data-f="remaining"></span></div><div class="tbox" data-tbox style="text-align:left"><div class="tlabel" data-f="tlabel"></div><div class="digits" data-f="timer"></div></div></div></div>
+ <div class="ft"><span class="mono" data-f="clock" style="font-size:5vh"></span><span class="mu">Volgend: <b style="color:var(--tx)" data-f="nextTrack"></b></span></div></div>`}
+
+/* ---------- router + render ---------- */
+const route=()=>location.hash.replace(/^#\/?/,'').split('?')[0]||'studio';
+function render(){const r=route(),o=r.startsWith('obs');document.body.classList.toggle('obs',o);document.body.classList.toggle('obs-t',o&&r!=='obs');document.body.dataset.route=r;
+ $('#view').innerHTML=o?vObs(r):(V[r]||V.studio)();$$('#nav a').forEach(a=>a.classList.toggle('on',a.dataset.r===(V[r]?r:o?'obs':'studio')));
+ document.body.classList.toggle('hidemini',!cfg.mini||['studio','dashboard','spotify'].includes(r));
+ if($('#voiceSel'))fillVoices();if($('.pad canvas'))$$('canvas[data-wv]').forEach(async cv=>{const s=sounds.find(x=>x.id===cv.dataset.wv);try{drawWave(cv,await getBuf(s))}catch{}});
+ if(r==='news')loadNews();if(r==='weather')loadWx();if(r==='traffic')loadTr();if(micStream&&$('#micdev'))micStart&&0;paint();window.scrollTo(0,0)}
+async function loadNews(){const n=await getNews();if($('#nsrc')){$('#nsrc').textContent=n.src;$('#nlist').innerHTML=n.items.map(i=>`<div class="li"><span>${esc(i.t)}</span></div>`).join('')}}
+async function loadTr(){const t=await getTraffic();if($('#trl'))$('#trl').innerHTML=`<span class="tag">${t.src}</span>`+t.items.map(i=>`<div class="li"><b class="tm">${esc(i.road)}</b><span>${esc(i.text)}</span></div>`).join('')}
+async function loadWx(force){const el=$('#wx');try{const j=await getWx(force),c=j.current,d=j.daily,r=Math.round,w=wc(c.weather_code);if(!$('#wx'))return;
+ $('#wx').innerHTML=`<div class="wxg"><div class="card"><div class="mu">Nu</div><div class="v">${w[1]} ${r(c.temperature_2m)}°</div><div>${w[0]}</div></div><div class="card"><div class="mu">Gevoelstemperatuur</div><div class="v">${r(c.apparent_temperature)}°</div></div><div class="card"><div class="mu">Regen</div><div class="v">${c.precipitation} mm</div><div class="mu">kans vandaag ${d.precipitation_probability_max[0]}%</div></div><div class="card"><div class="mu">Wind</div><div class="v">${r(c.wind_speed_10m)} <small>km/u</small></div><div><span style="display:inline-block;transform:rotate(${c.wind_direction_10m+180}deg)">↑</span> uit het ${dirOf(c.wind_direction_10m)}</div></div>
+ ${[0,1].map(i=>{const x=wc(d.weather_code[i]);return`<div class="card"><div class="mu">${i?'Morgen':'Vandaag'}</div><div class="v">${x[1]} ${r(d.temperature_2m_min[i])}–${r(d.temperature_2m_max[i])}°</div><div>${x[0]} · ${d.precipitation_probability_max[i]}% regen</div></div>`}).join('')}</div>`}catch(e){if(el)el.innerHTML=`<p class="warnbox">Weer laden mislukt: ${esc(e.message)}. Controleer je internetverbinding of de plaatsnaam in Instellingen.</p>`}}
+function fillVoices(){const s=$('#voiceSel');if(!s)return;const v=speechSynthesis.getVoices();s.innerHTML='<option value="">Automatisch (Nederlands)</option>'+v.map(x=>`<option value="${esc(x.name)}" ${cfg.voice===x.name?'selected':''}>${esc(x.name)} (${x.lang})</option>`).join('')}
+speechSynthesis?.addEventListener?.('voiceschanged',fillVoices);
+
+/* ---------- live paint (elke 250 ms + bij events) ---------- */
+function fields(){const n=new Date(),ss=showState(),cp=curPos(),nt=Q[1];return{
+ station:cfg.station,title:np.title,artist:np.artist,album:np.album,elapsed:fmt(cp),remaining:'-'+fmt(np.dur-cp),playicon:np.playing?'⏸':'▶',npflag:np.playing?'NOW PLAYING':'PAUZE',
+ srctag:np.src==='spotify'?'Bron: Spotify':'Bron: Demo',clock:n.toLocaleTimeString('nl-NL'),date:n.toLocaleDateString('nl-NL',{weekday:'long',day:'numeric',month:'long',year:'numeric'}),
+ timer:tDisp(),tlabel:tLabel(),tstartl:T.mode==='show'?(AIR.on?'⏹ Off air':'▶ Go live'):T.running?'⏸ Pauze':'▶ Start',
+ nextItem:ss.next?ss.next.t+' '+ss.next.label:'—',nextIn:ss.next?'over '+fmt(ss.inMs):'',nextTrack:np.src==='spotify'?'Volgt via Spotify':nt?nt.artist+' – '+nt.title:'—',
+ show:cfg.show,host:cfg.host,airtxt:AIR.on?'ON AIR':'OFF AIR',airtxt2:AIR.on?'ON AIR':'OFF AIR',stream:streamTxt(),streammsg:STR.msg,listeners:STR.listeners??'—',lsrc:STR.lsrc||'',
+ health:STR.state==='online'?(STR.stalls>3?'🟠 Instabiel ('+STR.stalls+' haperingen)':'🟢 Goed'):'—',qm:M.mute.master?'🔇':'🔊',
+ micstate:micState,micbtn:micStream?'Stop':'Start'}}
+function paint(){const F=fields();
+ $$('[data-f]').forEach(e=>{const v=F[e.dataset.f];if(v!==undefined&&e.textContent!==String(v))e.textContent=v});
+ $$('img[data-cover]').forEach(i=>{if(i.getAttribute('src')!==np.cover)i.src=np.cover});
+ const pr=np.dur?curPos()/np.dur*100:0;$$('[data-prog]').forEach(e=>e.style.width=pr+'%');
+ const tc=tClass();$$('[data-tbox]').forEach(e=>{e.classList.toggle('warn',tc==='warn');e.classList.toggle('crit',tc==='crit')});
+ const pc=(sel,cls)=>$$(sel).forEach(e=>e.className=e.className.replace(/\b(ok|bad|warn)\b/g,'').trim()+' '+cls);
+ document.body.classList.toggle('onair',AIR.on);$$('[data-f=airpill]').forEach(e=>{e.classList.toggle('bad',AIR.on);e.classList.toggle('ok',false)});
+ const sc=STR.state==='online'?'ok':STR.state==='offline'||(STR.state==='idle'&&cfg.streamUrl)?'bad':'warn';['streampill','streampill2','streampill3'].forEach(k=>$$(`[data-f=${k}]`).forEach(e=>{e.classList.remove('ok','bad','warn');e.classList.add(sc)}));
+ $$('[data-f=micpill]').forEach(e=>{e.classList.remove('ok','bad');e.classList.add(micStream?'ok':'bad')});
+ $$('[data-f=npflag]').forEach(e=>{e.classList.toggle('ok',np.playing)});
+ $$('.mute').forEach(b=>{const k=b.dataset.k;b.classList.toggle('on',!!M.mute[k]);if(k!=='mic')b.textContent=M.mute[k]?'MUTE':'🔊'});
+ document.title=(np.playing?'▶ '+np.title+' — ':'')+cfg.station}
+
+/* ---------- visualizer ---------- */
+const fb=new Uint8Array(512),tb=new Uint8Array(1024);let sm=0,LV={l:0,r:0},lvS=0;
+const lvl=a=>{if(!a)return 0;const d=new Uint8Array(a.fftSize);a.getByteTimeDomainData(d);let s=0;for(let i=0;i<d.length;i++){const v=(d[i]-128)/128;s+=v*v}return Math.min(1,Math.sqrt(s/d.length)*3.2)};
+function freq(){if(an){an.getByteFrequencyData(fb);let s=0;for(let i=0;i<48;i++)s+=fb[i];if(s>15)return{d:fb,real:true}}
+ if(np.playing&&np.src==='spotify'){const t=performance.now()/1000;for(let i=0;i<512;i++)fb[i]=Math.max(0,(Math.sin(t*3+i*.35)*.5+.5)*255*(1-i/620)*(.55+.45*Math.sin(t*2.1+i*.05))*(Math.sin(t*(60/110)*Math.PI*2)>0?1:.72));return{d:fb,real:false}}
+ fb.fill(0);return{d:fb,real:true}}
+function vizLoop(){requestAnimationFrame(vizLoop);const{d,real}=freq();let b=0;for(let i=1;i<8;i++)b+=d[i];b=b/7/255;sm=sm*.72+b*.28;document.documentElement.style.setProperty('--bass',sm.toFixed(3));
+ LV=real&&an?{l:lvl(anL),r:lvl(anR)}:{l:sm*.9,r:sm*.85};
+ const mv=micAn&&micStream?lvl(micAn):0;$$('[data-vu=mic]').forEach(e=>e.style.width=(mv*100)+'%');
+ const cv=$$('canvas[data-viz]');if(!cv.length)return;const cs=getComputedStyle(document.documentElement),ac=cs.getPropertyValue('--ac').trim()||'#0ef',ac2=cs.getPropertyValue('--ac2').trim()||'#85f';cv.forEach(c=>draw(c,d,c.dataset.mode||cfg.viz,ac,ac2))}
+function draw(c,d,mode,ac,ac2){const dpr=devicePixelRatio||1,w=c.clientWidth,h=c.clientHeight;if(!w)return;if(c.width!==Math.round(w*dpr)){c.width=Math.round(w*dpr);c.height=Math.round(h*dpr)}const g=c.getContext('2d');g.setTransform(dpr,0,0,dpr,0,0);g.clearRect(0,0,w,h);
+ const gr=g.createLinearGradient(0,h,0,0);gr.addColorStop(0,ac2);gr.addColorStop(1,ac);g.fillStyle=gr;g.strokeStyle=ac;g.lineWidth=2.5;
+ if(mode==='spectrum'){const n=72,bw=w/n;for(let i=0;i<n;i++){const v=d[Math.floor(i*3.2)+1]/255,bh=Math.max(2,v*h*.95);g.beginPath();g.roundRect?g.roundRect(i*bw+1,h-bh,bw-3,bh,3):g.rect(i*bw+1,h-bh,bw-3,bh);g.fill()}}
+ else if(mode==='eq'){const n=26,bw=w/n,seg=h/16;for(let i=0;i<n;i++){const v=Math.round(d[Math.floor(i*3.8)+1]/255*16);for(let s=0;s<v;s++){g.fillStyle=s>13?'#ff3b57':s>10?'#ffa41b':ac;g.fillRect(i*bw+2,h-(s+1)*seg+2,bw-4,seg-3)}}}
+ else if(mode==='wave'){g.beginPath();const t=performance.now()/1000;let live=false;if(an){an.getByteTimeDomainData(tb);for(let i=0;i<300;i++)if(Math.abs(tb[i]-128)>2){live=true;break}}
+  for(let x=0;x<=w;x+=3){const i=Math.floor(x/w*1000);const y=live?tb[i]/255*h:h/2+Math.sin(x*.03+t*4)*h*.35*(np.playing?sm+.05:.02)+Math.sin(x*.08+t*6)*h*.1*sm;x?g.lineTo(x,y):g.moveTo(x,y)}g.stroke()}
+ else if(mode==='bass'){const r=Math.min(w,h)*(.18+sm*.42);g.beginPath();g.arc(w/2,h/2,r,0,7);g.fill();g.globalAlpha=.4;g.beginPath();g.arc(w/2,h/2,r*1.35,0,7);g.stroke();g.globalAlpha=1}
+ else if(mode==='vu'){[['L',LV.l],['R',LV.r]].forEach(([l,v],i)=>{const y=h*.18+i*h*.4,bh=h*.28,n=40,bw=(w-40)/n;g.fillStyle='#8b94aa';g.font='700 14px Sora,sans-serif';g.fillText(l,6,y+bh*.7);for(let k=0;k<n;k++){const on=k/n<v;g.fillStyle=on?(k>n*.85?'#ff3b57':k>n*.68?'#ffa41b':'#22e58a'):'rgba(255,255,255,.08)';g.fillRect(30+k*bw,y,bw-3,bh)}})}}
+
+/* ---------- events ---------- */
+const A={
+ toggle:()=>P.toggle(),next:()=>P.next(),prev:()=>P.prev(),air,tstart:tToggle,treset:tReset,quickmute:()=>{M.mute.master=!M.mute.master;saveMix();applyMix();paint()},
+ fs:()=>document.fullscreenElement?document.exitFullscreen():document.documentElement.requestFullscreen?.(),
+ theme:()=>{cfg.theme=cfg.theme==='dark'?'light':'dark';saveCfg();applyTheme()},
+ seek:(el,e)=>{const r=el.getBoundingClientRect();P.seek(Math.max(0,Math.min(1,(e.clientX-r.left)/r.width)))},
+ emergency,emgoff:()=>$('#emg').classList.remove('show'),
+ tmode:el=>{normT();T.mode=el.dataset.m;T.running=false;if(T.mode==='countdown'||T.mode==='segment')T.ms=T.preset;else if(T.mode==='stopwatch')T.ms=0;saveT();render()},
+ tadd:el=>tAdd(+el.dataset.v*1000),tset:()=>{const ms=parseHMS($('#tset').value);if(ms==null||ms<=0)return toast('Gebruik bijv. 3:42 of 1:24:37');T.ms=ms;T.preset=ms;T.at=Date.now();saveT();paint()},
+ pad:el=>playSound(el.dataset.id),sedit:(el,e)=>{e.stopPropagation();editSound(el.dataset.id)},
+ bank:el=>{curBank=+el.dataset.i;render()},addbank:()=>{const n=prompt('Naam van de nieuwe pagina:');if(n){banks.push(n.slice(0,16));LS.set('banks',banks);curBank=banks.length-1;render()}},upl:()=>$('#fileIn').click(),
+ dclose:()=>$('#dlg').close(),
+ ssave:el=>{const s=sounds.find(x=>x.id===el.dataset.id);s.name=$('#e_n').value.toUpperCase().slice(0,18);s.icon=$('#e_i').value||'🔊';s.color=$('#e_c').value;s.vol=+$('#e_v').value;s.key=$('#e_k').value.trim();s.bank=+$('#e_b').value;saveSounds();$('#dlg').close();render()},
+ sdel:async el=>{if(!confirm('Deze sound verwijderen?'))return;const id=el.dataset.id;sounds=sounds.filter(x=>x.id!==id);delete bufCache[id];if(id[0]==='u')await idbDel(id);saveSounds();$('#dlg').close();render()},
+ viz:el=>{cfg.viz=el.dataset.m;saveCfg();$$('canvas[data-viz]').forEach(c=>c.dataset.mode='');$$('[data-act=viz]').forEach(b=>b.classList.toggle('on',b===el))},
+ mute:el=>{const k=el.dataset.k;M.mute[k]=!M.mute[k];saveMix();applyMix();paint()},
+ mic:micToggle,fadeout:()=>fadeTo(0,2500),fadein:()=>fadeTo(1,2500),stationid:()=>playSound('stationid'),
+ introcd:()=>{normT();T.mode='segment';T.label='INTRO COUNTDOWN';T.ms=T.preset=10000;T.running=true;T.at=Date.now();saveT();toast('Intro-countdown gestart');render()},
+ qdel:el=>{Q.splice(+el.dataset.i,1);saveQ();render()},
+ qadd:()=>{const a=$('#qa').value.trim(),t=$('#qt').value.trim(),d=parseHMS($('#qd').value||'3:30');if(!a||!t)return toast('Vul artiest en titel in');Q.push(mkT([t,a,(d||210000)/1000,120]));saveQ();render()},
+ scadd:()=>{const t=$('#sct').value,l=$('#scl').value.trim().toUpperCase();if(!t||!l)return toast('Kies een tijd en een naam');SC.push({id:uid(),t,label:l});saveSC();render()},
+ scdel:el=>{SC=SC.filter(x=>x.id!==el.dataset.id);saveSC();render()},screset:()=>{SC=SCD.map(x=>({...x,id:uid()}));saveSC();render()},
+ gnews:el=>run('Nieuws',()=>newsScript(el.dataset.s||'normal')),gwx:()=>run('Weer',weatherScript),gtr:()=>run('Verkeer',trafficScript),ghour:()=>run('Radio-uur',hourScript),ghourspeak:()=>run('Radio-uur',hourScript,true),
+ hsel:el=>{hourSel[el.dataset.k]=hourSel[el.dataset.k]?0:1;el.classList.toggle('on',!!hourSel[el.dataset.k])},
+ sched:el=>{cfg.sched=el.dataset.v;saveCfg();$$('[data-act=sched]').forEach(b=>b.classList.toggle('on',b===el));toast(cfg.sched==='manual'?'Scheduler uit':'Scheduler: elke '+cfg.sched+' minuten')},
+ speak:()=>speak(getScript()),stopspeak:()=>stopSpeak(),copy:()=>navigator.clipboard.writeText(getScript()).then(()=>toast('Gekopieerd')),
+ savetxt:()=>dl(new Blob([getScript()],{type:'text/plain'}),'radioscript-'+new Date().toISOString().slice(0,16).replace(/[:T]/g,'-')+'.txt'),
+ saveaudio:async()=>{await speak(getScript());await sleep(1500);if(window.lastTts)dl(window.lastTts,'radio-audio.mp3');else toast('Geen audio beschikbaar')},
+ wxr:()=>{loadWx(true)},geo:async()=>{cfg.geoFor='';try{await geo();WX=null;toast('Locatie: '+cfg.city)}catch(e){toast(e.message)}},
+ splay:streamPlay,sstop:streamStop,splogin:spLogin,splogout:()=>spLogout(),src:el=>useSource(el.dataset.s),splay1:spPlayLink,spq:spAddQueue,
+ hk:el=>{capKey=el.dataset.a;toast('Druk nu op de nieuwe toets…')},hkreset:()=>{HK={...HKD};LS.set('hotkeys',HK);render()},
+ cp:el=>navigator.clipboard.writeText(el.dataset.t).then(()=>toast('Gekopieerd')),
+ export:()=>{const c={...cfg};delete c.aiKey;delete c.ttsKey;dl(new Blob([JSON.stringify({cfg:c,sounds,banks,SC,HK,M},null,1)],{type:'application/json'}),'radiostudio-instellingen.json')},
+ import:()=>$('#impIn').click(),wipe:()=>{if(confirm('Alle instellingen en eigen sounds wissen?')){Object.keys(localStorage).filter(k=>k.startsWith('rs.')).forEach(k=>localStorage.removeItem(k));indexedDB.deleteDatabase('radiostudio');location.reload()}}
+};
+let capKey=null;
+const dl=(blob,name)=>{const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),4000)};
+function emergency(){stopAll();P.next&&np.playing&&P.toggle();$('#emgt').textContent=prompt('Noodtekst:','Programma onderbroken — even geduld')||'Programma onderbroken';$('#emg').classList.add('show');playSound('alert');logEv('NOODMELDING')}
+document.addEventListener('click',e=>{const el=e.target.closest('[data-act]');if(!el)return;ensureCtx();if(el.dataset.act==='toggle'&&SP.player)SP.player.activateElement?.();A[el.dataset.act]?.(el,e)});
+document.addEventListener('input',e=>{const el=e.target.closest('[data-in]');if(!el)return;const k=el.dataset.k,v=el.type==='checkbox'?el.checked:el.type==='range'?+el.value:el.hasAttribute('data-num')?+el.value:el.value;
+ switch(el.dataset.in){case'cfg':cfg[k]=v;if(k==='city')cfg.geoFor='';saveCfg();if(k==='accent'||k==='theme')applyTheme();if(k==='station'){drawNav();paint()}if(k==='mini')render();break;
+ case'mix':M[k]=v;saveMix();applyMix();$$(`[data-in=mix][data-k=${k}]`).forEach(x=>{if(x!==el)x.value=v});break;case'tlabel':T.label=v;saveT();break;case'micdev':micStart(v);break;case'micmon':micMon=v;micMonSet();break}});
+document.addEventListener('change',async e=>{const el=e.target.closest('[data-file]');if(!el||!el.files?.length)return;const f=el.files[0];
+ if(el.id==='fileIn')addFiles(el.files);
+ else if(el.dataset.file==='logo'){const img=new Image();img.onload=()=>{const s=Math.min(1,256/Math.max(img.width,img.height)),c=document.createElement('canvas');c.width=img.width*s;c.height=img.height*s;c.getContext('2d').drawImage(img,0,0,c.width,c.height);cfg.logo=c.toDataURL('image/png');saveCfg();drawNav();toast('Logo opgeslagen')};img.src=URL.createObjectURL(f)}
+ else if(el.dataset.file==='import'){try{const j=JSON.parse(await f.text());if(j.cfg){cfg={...DEF,...j.cfg,aiKey:cfg.aiKey,ttsKey:cfg.ttsKey};saveCfg()}if(j.sounds){sounds=j.sounds;saveSounds()}if(j.banks){banks=j.banks;LS.set('banks',banks)}if(j.SC){SC=j.SC;saveSC()}if(j.HK){HK=j.HK;LS.set('hotkeys',HK)}if(j.M){M=j.M;saveMix()}toast('Geïmporteerd');applyTheme();drawNav();render()}catch{toast('Ongeldig bestand')}}});
+/* hotkeys */
+addEventListener('keydown',e=>{if(/INPUT|TEXTAREA|SELECT/.test(e.target.tagName)||e.target.isContentEditable||e.ctrlKey||e.metaKey||e.altKey)return;const k=e.key.length===1?e.key.toLowerCase():e.key;
+ if(capKey){e.preventDefault();HK[capKey]=k;LS.set('hotkeys',HK);capKey=null;render();return}
+ for(const[a,key]of Object.entries(HK))if(key===k){e.preventDefault();document.activeElement?.blur?.();ensureCtx();HKA[a]();return}
+ const s=sounds.find(x=>x.key&&x.key.toLowerCase()===k.toLowerCase());if(s){e.preventDefault();ensureCtx();playSound(s.id);return}
+ if(/^[1-9]$/.test(k)){const s2=sounds.filter(x=>x.bank===curBank)[+k-1];if(s2){ensureCtx();playSound(s2.id)}}});
+addEventListener('keyup',e=>{if(e.key===' '&&!/INPUT|TEXTAREA|SELECT/.test(e.target.tagName))e.preventDefault()});
+const HKA={playpause:()=>P.toggle(),next:()=>P.next(),prev:()=>P.prev(),mic:micToggle,soundboard:()=>go('soundboard'),timer:tToggle,jingle:()=>playSound(cfg.jingleId||'jingle'),stop:stopAll,quickmute:A.quickmute,emergency};
+/* drag & drop: wachtrij + bestanden */
+let dragI=null;
+document.addEventListener('dragstart',e=>{const q=e.target.closest?.('.qi');if(q){dragI=+q.dataset.i;e.dataTransfer.effectAllowed='move'}});
+document.addEventListener('dragover',e=>{e.preventDefault();if(e.dataTransfer?.types?.includes('Files'))document.body.classList.add('dragging');const q=e.target.closest?.('.qi');$$('.qi.over').forEach(x=>x.classList.remove('over'));if(q&&dragI!=null)q.classList.add('over')});
+document.addEventListener('dragleave',e=>{if(!e.relatedTarget)document.body.classList.remove('dragging')});
+document.addEventListener('drop',e=>{e.preventDefault();document.body.classList.remove('dragging');
+ if(e.dataTransfer.files?.length&&route()==='soundboard'){addFiles(e.dataTransfer.files);return}
+ const q=e.target.closest?.('.qi');if(dragI!=null&&q){const to=+q.dataset.i;if(to!==dragI){const[m]=Q.splice(dragI,1);Q.splice(to,0,m);saveQ();if(to===0||dragI===0)loadTrack(Q[0],np.playing);render()}}dragI=null});
+document.addEventListener('dragend',()=>{dragI=null;$$('.qi.over').forEach(x=>x.classList.remove('over'))});
+/* sync met OBS-pagina's / andere tabbladen (zelfde browserprofiel) */
+addEventListener('storage',e=>{if(!e.key?.startsWith('rs.')||e.newValue==null)return;const k=e.key.slice(3);let v;try{v=JSON.parse(e.newValue)}catch{return}
+ if(k==='np'&&isObs())np=v;if(k==='timer')T=v;if(k==='air')AIR=v;if(k==='cfg'){cfg={...DEF,...v};applyTheme();if(isObs())render()}if(k==='mix')M=v;if(k==='queue')Q=v;if(k==='showclock')SC=v;paint()});
+addEventListener('hashchange',render);
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)paint()});
+
+/* ---------- PWA (manifest ingebouwd) ---------- */
+(function(){try{const svg="data:image/svg+xml;utf8,"+encodeURIComponent("<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><rect width='512' height='512' rx='110' fill='#0b0e17'/><text x='256' y='340' font-size='280' text-anchor='middle'>📻</text></svg>");
+ const m={name:cfg.station,short_name:'Radio Studio',start_url:location.href.split('#')[0],display:'standalone',background_color:'#06070c',theme_color:'#06070c',icons:[{src:svg,sizes:'512x512',type:'image/svg+xml'}]};
+ const l=document.createElement('link');l.rel='manifest';l.href=URL.createObjectURL(new Blob([JSON.stringify(m)],{type:'application/manifest+json'}));document.head.appendChild(l);
+ if('serviceWorker' in navigator&&location.protocol!=='file:')navigator.serviceWorker.register('sw.js').catch(()=>{})}catch{}})();
+
+/* ---------- start ---------- */
+(async function init(){applyTheme();drawNav();streamWire();
+ const q=new URLSearchParams(location.search);if(q.get('code')&&SP.tok===null||q.get('code')){await spExchange(q.get('code'));history.replaceState(null,'',location.pathname+'#/spotify')}
+ else if(q.get('error')){toast('Spotify: '+q.get('error'));history.replaceState(null,'',location.pathname+'#/spotify')}
+ if(!isObs()){loadTrack(Q[0],false)}else{const s=LS.get('np',null);if(s)np=s;}
+ render();
+ if(SP.tok){spInitPlayer();spMe()}
+ listeners();setInterval(listeners,30000);probe();setInterval(probe,45000);
+ setInterval(()=>{normT();if(!isObs()&&np.src==='demo'&&np.playing&&np.dur&&curPos()>=np.dur-50)demoNext();paint();schedTick()},250);
+ setInterval(()=>{if(SP.player&&np.src==='spotify'&&np.playing)SP.player.getCurrentState().then(s=>{if(s){np.pos=s.position;np.ts=Date.now()}})},5000);
+ vizLoop();
+ if(isObs()&&LS.get('np',null))setInterval(()=>{const s=LS.get('np',null);if(s&&!SP.tok)np=s},1500);
+})();
+</script>
+</body>
+</html>
