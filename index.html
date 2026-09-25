@@ -157,7 +157,6 @@ body.obs-t{background:transparent}body.obs-t::before{display:none}
     <header id="top">
       <span class="st" data-f="station"></span>
       <button class="btn" id="airbtn" data-act="air"><i class="dot"></i><span data-f="airtxt">OFF AIR</span></button>
-      <span class="pill" data-f="streampill"><i class="dot"></i><span data-f="stream">STREAM OFFLINE</span></span>
       <span class="mono" data-f="clock" style="font-weight:500"></span>
       <button class="btn sm" data-act="quickmute" data-f="qm" title="Quick mute (Q)">🔊</button>
       <button class="btn sm bad" data-act="emergency" title="Noodknop (E)">🚨</button>
@@ -201,12 +200,12 @@ function cover(seed){let h=0;for(const c of seed)h=(h*31+c.charCodeAt(0))>>>0;co
 
 /* ---------- instellingen ---------- */
 const DEF={station:'Radio Studio 2030',logo:'',accent:'#00e5ff',theme:'dark',mini:true,show:'Avondshow',host:'Presentator',streamUrl:'',statusUrl:'',
- city:'Leeuwarden',lat:53.2012,lon:5.7999,geoFor:'Leeuwarden',region:'Nederland',trafficUrl:'',newsMode:'demo',newsFeed:'https://feeds.nos.nl/nosnieuwsalgemeen',
+ city:'Leeuwarden',lat:53.2012,lon:5.7999,geoFor:'Leeuwarden',region:'Nederland',trafficUrl:'',newsMode:'rss',newsFeed:'https://feeds.nos.nl/nosnieuwsalgemeen',
  aiUrl:'https://api.openai.com/v1/chat/completions',aiKey:'',aiModel:'gpt-4o-mini',ttsUrl:'',ttsKey:'',voice:'',rate:1,duck:true,crossfade:false,
- spClient:'',spRedirect:'',viz:'spectrum',jingleEvery:0,jingleId:'jingle',sched:'manual',autoSpeak:false};
+ spClient:'',spRedirect:'',viz:'spectrum',jingleEvery:0,jingleId:'jingle',sched:'manual',autoSpeak:false,bgMusicId:'',bgAuto:true,bgLoop:true};
 let cfg={...DEF,...LS.get('cfg',{})};const saveCfg=()=>LS.set('cfg',cfg);
-const HKN={playpause:'Play / Pause',next:'Volgend nummer',prev:'Vorig nummer',mic:'Microfoon aan/uit',soundboard:'Naar soundboard',timer:'Timer start/pauze',jingle:'Jingle afspelen',stop:'Stop alle geluiden',quickmute:'Quick mute',emergency:'Noodknop'};
-const HKD={playpause:' ',next:'n',prev:'p',mic:'m',soundboard:'s',timer:'t',jingle:'b',stop:'Escape',quickmute:'q',emergency:'e'};
+const HKN={playpause:'Play / Pause',next:'Volgend nummer',prev:'Vorig nummer',mic:'Microfoon aan/uit',soundboard:'Naar soundboard',jingle:'Jingle afspelen',stop:'Stop alle geluiden',quickmute:'Quick mute',emergency:'Noodknop'};
+const HKD={playpause:' ',next:'n',prev:'p',mic:'m',soundboard:'s',jingle:'b',stop:'Escape',quickmute:'q',emergency:'e'};
 let HK={...HKD,...LS.get('hotkeys',{})};
 let M={mic:.8,music:.8,sb:.9,tts:1,master:.9,mute:{},...LS.get('mix',{})};M.mute=M.mute||{};const saveMix=()=>LS.set('mix',M);
 let AIR=LS.get('air',{on:false,start:0});
@@ -231,6 +230,38 @@ function applyMix(){const g=k=>M.mute[k]?0:M[k];
 function fadeTo(v,ms){return new Promise(r=>{const a=fade,t0=performance.now();(function s(){const k=Math.min(1,(performance.now()-t0)/ms);fade=a+(v-a)*k;applyMix();k<1?requestAnimationFrame(s):r()})()})}
 function setDuck(on){duck=on&&cfg.duck?.25:1;applyMix()}
 function stopAll(){Object.keys(act).forEach(stopSound);speechSynthesis?.cancel();if(ttsSrc){try{ttsSrc.stop()}catch{}}setDuck(false);toast('Alle geluiden gestopt')}
+
+/* ---------- rustige achtergrond / loop ---------- */
+let bgSrc=null,bgGain=null,bgKey='';
+let ambientBuf=null;
+function makeAmbient(){
+ if(ambientBuf)return ambientBuf;
+ const c=ensureCtx(),sr=c.sampleRate,dur=16,b=c.createBuffer(2,sr*dur,sr);
+ const notes=[110,130.81,146.83,164.81];
+ for(let ch=0;ch<2;ch++){const d=b.getChannelData(ch);for(let i=0;i<d.length;i++){const t=i/sr, n=notes[Math.floor(t/4)%notes.length];d[i]=(Math.sin(2*Math.PI*n*t)*.035+Math.sin(2*Math.PI*(n/2)*t)*.025+Math.sin(2*Math.PI*.18*t)*.01)*(.7+.3*Math.sin(t*.11));}}
+ return ambientBuf=b
+}
+async function startBgLoop(id=cfg.bgMusicId){
+ if(np.playing||!cfg.bgAuto)return;
+ if(bgSrc&&bgKey===id)return;
+ stopBgLoop();
+ ensureCtx();
+ try{
+  let b;
+  if(id){const snd=sounds.find(x=>x.id===id);if(!snd)throw new Error('Achtergrondbestand niet gevonden');b=await getBuf(snd)}
+  else b=makeAmbient();
+  const src=ctx.createBufferSource(),g=ctx.createGain();src.buffer=b;src.loop=cfg.bgLoop!==false;g.gain.value=.16;src.connect(g).connect(bus.music);src.start();
+  bgSrc=src;bgGain=g;bgKey=id||'ambient';
+  src.onended=()=>{if(bgSrc===src){bgSrc=null;bgGain=null;bgKey=''}};
+ }catch(e){toast('Achtergrondmuziek: '+e.message)}
+}
+function stopBgLoop(){
+ if(!bgSrc)return;
+ try{bgGain?.gain.setTargetAtTime(0,ctx.currentTime,.03);bgSrc.stop(ctx.currentTime+.15)}catch{}
+ bgSrc=null;bgGain=null;bgKey='';
+}
+function syncBackground(){if(np.playing)stopBgLoop();else if(ttsSrc||speechSynthesis?.speaking)startBgLoop();}
+
 
 /* ---------- soundboard (geluiden worden lokaal gesynthetiseerd; eigen bestanden in IndexedDB) ---------- */
 function mkBuf(dur,fn){const c=ensureCtx(),sr=c.sampleRate,n=Math.floor(dur*sr),b=c.createBuffer(1,n,sr),d=b.getChannelData(0);for(let i=0;i<n;i++)d[i]=Math.max(-1,Math.min(1,fn(i/sr,i/n)||0));return b}
@@ -279,37 +310,28 @@ function editSound(id){const s=sounds.find(x=>x.id===id);if(!s)return;const d=$(
  <label class="fld"><span>Pagina</span><select id="e_b">${banks.map((b,i)=>`<option value="${i}" ${s.bank==i?'selected':''}>${esc(b)}</option>`).join('')}</select></label>
  <div class="row sb"><button class="btn bad" data-act="sdel" data-id="${id}">Verwijderen</button><span class="row"><button class="btn" data-act="dclose">Annuleren</button><button class="btn pri" data-act="ssave" data-id="${id}">Opslaan</button></span></div>`;d.showModal()}
 
-/* ---------- demo-muziek (gesynthetiseerd) + wachtrij ---------- */
-const DEMO=[['Neon Harbour','The Midnight Signals',214,118],['Glass Skyline','Luna Vega',187,124],['Afterglow Drive','Kite & Coral',201,110],['Polder Nights','Wadden Wave',176,128],['Golden Hour','Solstice Club',232,102],['Static Hearts','Analog Youth',195,122],['Tidal','Aurora Lane',224,96],['Elfsteden','Friese Bas',208,126]];
-const mkT=a=>({id:uid(),title:a[0],artist:a[1],dur:a[2]*1000,bpm:a[3],album:'Demo Sessies'});
-let Q=LS.get('queue',null)||DEMO.map(mkT),HIST=LS.get('history',[]);
-const saveQ=()=>LS.set('queue',Q);
-let np={title:'Geen nummer',artist:'—',album:'',cover:cover('idle'),dur:0,pos:0,playing:false,ts:Date.now(),src:'demo',id:'',bpm:120};
+/* ---------- Spotify-only playback + queue ---------- */
+let Q=[],HIST=LS.get('history',[]);
+const saveQ=()=>{};
+let np={title:'Geen nummer',artist:'—',album:'',cover:cover('idle'),dur:0,pos:0,playing:false,ts:Date.now(),src:'spotify',id:'',bpm:120};
 const curPos=()=>np.dur?Math.min(np.dur,np.pos+(np.playing?Date.now()-np.ts:0)):0;
-function syncNp(){if(!isObs())LS.set('np',{...np,cover:np.cover.startsWith('data:')?np.cover:np.cover})}
-function loadTrack(t,play){np={...np,src:'demo',title:t.title,artist:t.artist,album:t.album||'Demo Sessies',cover:cover(t.artist+t.title),dur:t.dur,pos:0,ts:Date.now(),playing:!!play,id:t.id,bpm:t.bpm};
- play?startSynth():stopSynth();syncNp();paint()}
-function pushHist(){if(!np.id||np.title==='Geen nummer')return;HIST.unshift({title:np.title,artist:np.artist,t:Date.now(),src:np.src});HIST=HIST.slice(0,40);LS.set('history',HIST)}
-let synth=null;
-const nzBuf=()=>{const c=ensureCtx(),b=c.createBuffer(1,c.sampleRate*.2,c.sampleRate),d=b.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=nz();return b};
-function startSynth(){stopSynth();const c=ensureCtx(),nb=nzBuf();let step=0,next=c.currentTime+.05;const sc=[0,3,5,7,10,12,15],root=[55,65.4,49,73.4];
- const env2=(g,t,a,d,pk)=>{g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(pk,t+a);g.gain.exponentialRampToValueAtTime(.0001,t+a+d)};
- synth=setInterval(()=>{const dt=60/(np.bpm||120)/4;while(next<c.currentTime+1.2){const s=step%16,bar=Math.floor(step/16)%4,t=next;
-  if(s%4===0){const o=c.createOscillator(),g=c.createGain();o.frequency.setValueAtTime(160,t);o.frequency.exponentialRampToValueAtTime(42,t+.13);env2(g,t,.003,.3,.9);o.connect(g).connect(bus.music);o.start(t);o.stop(t+.35)}
-  if(s%2===1){const n=c.createBufferSource(),f=c.createBiquadFilter(),g=c.createGain();n.buffer=nb;f.type='highpass';f.frequency.value=7000;env2(g,t,.002,.05,.18);n.connect(f).connect(g).connect(bus.music);n.start(t);n.stop(t+.1)}
-  if(s===4||s===12){const n=c.createBufferSource(),f=c.createBiquadFilter(),g=c.createGain();n.buffer=nb;f.type='bandpass';f.frequency.value=1800;env2(g,t,.002,.14,.5);n.connect(f).connect(g).connect(bus.music);n.start(t);n.stop(t+.2)}
-  if([0,3,6,10,14].includes(s)){const o=c.createOscillator(),f=c.createBiquadFilter(),g=c.createGain();o.type='sawtooth';o.frequency.value=root[bar];f.type='lowpass';f.frequency.value=380;env2(g,t,.01,.3,.55);o.connect(f).connect(g).connect(bus.music);o.start(t);o.stop(t+.4)}
-  if(s%2===0){const o=c.createOscillator(),g=c.createGain();o.type='triangle';o.frequency.value=root[bar]*4*Math.pow(2,sc[(step*3+bar*2)%7]/12);env2(g,t,.01,.22,.09);o.connect(g).connect(bus.music);o.start(t);o.stop(t+.3)}
-  next+=dt;step++}},350)}
-function stopSynth(){clearInterval(synth);synth=null}
-function demoToggle(){ensureCtx();if(np.src!=='demo')useSource('demo');if(!np.id)loadTrack(Q[0],false);np.pos=curPos();np.playing=!np.playing;np.ts=Date.now();np.playing?startSynth():stopSynth();syncNp();paint()}
-async function demoNext(){const wp=np.playing;if(cfg.crossfade&&wp){await fadeTo(0,1200)}pushHist();Q.shift();if(Q.length<2)Q.push(...DEMO.map(mkT).sort(()=>Math.random()-.5));saveQ();loadTrack(Q[0],wp);if(cfg.crossfade&&wp)fadeTo(1,1200);if(route()==='playlist'||route()==='studio'||route()==='dashboard')render()}
-function demoPrev(){if(curPos()>3000||!HIST.length){np.pos=0;np.ts=Date.now();syncNp();return}const h=HIST.shift();LS.set('history',HIST);Q.unshift(mkT([h.title,h.artist,200,np.bpm]));saveQ();loadTrack(Q[0],np.playing);render()}
-const P={toggle(){ensureCtx();np.src==='spotify'&&SP.player?SP.player.togglePlay():demoToggle()},next(){np.src==='spotify'&&SP.player?SP.player.nextTrack():demoNext()},prev(){np.src==='spotify'&&SP.player?SP.player.previousTrack():demoPrev()},
- seek(f){const ms=Math.floor(np.dur*f);if(np.src==='spotify'&&SP.player)SP.player.seek(ms);else{np.pos=ms;np.ts=Date.now();syncNp()}}};
-function useSource(s){if(s==='spotify'){if(!SP.player){toast('Log eerst in bij Spotify');return}if(np.src==='demo'&&np.playing){np.playing=false;stopSynth()}np.src='spotify';SP.player.getCurrentState().then(spState)}
- else{if(SP.player&&np.src==='spotify')SP.player.pause();np.src='demo';loadTrack(Q[0]||mkT(DEMO[0]),false)}render()}
-
+function syncNp(){if(!isObs())LS.set('np',{...np})}
+function pushHist(){if(!np.id||np.title==='Geen nummer')return;HIST.unshift({title:np.title,artist:np.artist,t:Date.now(),src:'spotify'});HIST=HIST.slice(0,40);LS.set('history',HIST)}
+let spotifyManualStop=false;
+function stopCurrentPlayback(){try{SP.player?.pause()}catch{}np.playing=false;np.pos=np.dur||np.pos;np.ts=Date.now();syncNp();paint()}
+const P={
+ toggle(){ensureCtx();if(!SP.player)return toast('Log eerst in bij Spotify');SP.player.togglePlay().catch(e=>toast('Spotify: '+e.message))},
+ next(){if(!SP.player)return toast('Spotify is niet gekoppeld');spotifyManualStop=false;SP.player.nextTrack().catch(e=>toast('Spotify: '+e.message))},
+ prev(){if(!SP.player)return toast('Spotify is niet gekoppeld');spotifyManualStop=false;SP.player.previousTrack().catch(e=>toast('Spotify: '+e.message))},
+ seek(f){const ms=Math.floor(np.dur*f);if(SP.player)SP.player.seek(ms).catch(()=>{});np.pos=ms;np.ts=Date.now();syncNp()}
+};
+function useSource(s){if(s!=='spotify')return; if(!SP.player)return toast('Log eerst in bij Spotify');np.src='spotify';SP.player.getCurrentState().then(spState)}
+async function spQueue(){
+ if(!SP.tok){Q=[];return}
+ try{const j=await spApi('/me/player/queue');Q=(j?.queue||[]).map(t=>({id:t.id,title:t.name,artist:t.artists?.map(a=>a.name).join(', ')||'—',album:t.album?.name||'',cover:t.album?.images?.[0]?.url||cover(t.name),dur:t.duration_ms||0}));}
+ catch{Q=[]}
+ if(['playlist','studio','dashboard'].includes(route()))render();
+}
 /* ---------- Spotify (PKCE, alleen frontend) ---------- */
 const SP={tok:LS.get('sptok',null),player:null,dev:null,user:null,err:''};
 const b64u=b=>btoa(String.fromCharCode(...new Uint8Array(b))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
@@ -325,8 +347,14 @@ async function spToken(){const t=SP.tok;if(!t)return null;if(Date.now()<t.exp-60
 function spLogout(q){SP.tok=null;LS.set('sptok',null);try{SP.player?.disconnect()}catch{}SP.player=null;SP.user=null;if(np.src==='spotify')np.src='demo';if(!q)toast('Uitgelogd bij Spotify');render()}
 async function spApi(path,method='GET',body){const t=await spToken();if(!t)throw new Error('Niet ingelogd');const r=await fetch('https://api.spotify.com/v1'+path,{method,headers:{Authorization:'Bearer '+t,...(body?{'Content-Type':'application/json'}:{})},body:body?JSON.stringify(body):undefined});
  if(r.status===204)return null;if(!r.ok)throw new Error('Spotify fout '+r.status);const x=await r.text();return x?JSON.parse(x):null}
-function spState(s){if(!s||!s.track_window?.current_track)return;const t=s.track_window.current_track,changed=np.id!==t.id;if(np.src==='demo'&&np.playing){np.playing=false;stopSynth()}
- if(changed)pushHist();np={...np,src:'spotify',title:t.name,artist:t.artists.map(a=>a.name).join(', '),album:t.album.name,cover:t.album.images[0]?.url||cover(t.name),dur:s.duration,pos:s.position,playing:!s.paused,ts:Date.now(),id:t.id};syncNp();paint();if(changed&&['playlist','dashboard'].includes(route()))render()}
+function spState(s){
+ if(!s||!s.track_window?.current_track)return;
+ const t=s.track_window.current_track,changed=np.id!==t.id;
+ if(changed&&np.id)pushHist();
+ np={...np,src:'spotify',title:t.name,artist:t.artists.map(a=>a.name).join(', '),album:t.album.name,cover:t.album.images[0]?.url||cover(t.name),dur:s.duration,pos:s.position,playing:!s.paused,ts:Date.now(),id:t.id};
+ if(changed){spotifyManualStop=false;spQueue();}
+ syncNp();if(np.playing)stopBgLoop();paint();
+}
 function spVol(){if(SP.player&&np.src==='spotify')SP.player.setVolume(Math.max(0,Math.min(1,(M.mute.music||M.mute.master?0:M.music*M.master)*duck*fade))).catch(()=>{})}
 function spInitPlayer(){if(!SP.tok||SP.player||isObs())return;
  const mk=()=>{const pl=new Spotify.Player({name:cfg.station+' Studio',getOAuthToken:cb=>spToken().then(t=>t&&cb(t)),volume:.7});SP.player=pl;
@@ -395,12 +423,12 @@ const DEMO_NEWS=[{t:'Waterschappen houden extra oog op het waterpeil na de regen
 const clean=h=>{try{return(new DOMParser().parseFromString(h||'','text/html').body.textContent||'').trim()}catch{return h||''}};
 async function getNews(){try{if(cfg.newsMode==='rss'){const j=await(await fetch('https://api.rss2json.com/v1/api.json?rss_url='+encodeURIComponent(cfg.newsFeed))).json();if(j.items?.length)return{src:'RSS',items:j.items.slice(0,8).map(i=>({t:clean(i.title),d:clean(i.description).slice(0,220)}))}}
  if(cfg.newsMode==='json'){const j=await(await fetch(cfg.newsFeed)).json();const a=Array.isArray(j)?j:j.items||j.articles||[];if(a.length)return{src:'API',items:a.slice(0,8).map(i=>({t:clean(i.title),d:clean(i.description||i.summary||'').slice(0,220)}))}}}
- catch(e){toast('Nieuwsbron niet bereikbaar — demo-nieuws gebruikt')}return{src:'DEMO',items:DEMO_NEWS}}
+ catch(e){toast('Nieuwsbron niet bereikbaar')}return{src:'Geen bron',items:[]}}
 const aiOn=()=>!!cfg.aiKey||/localhost|127\.0\.0\.1/.test(cfg.aiUrl);
 async function ai(prompt){const r=await fetch(cfg.aiUrl,{method:'POST',headers:{'Content-Type':'application/json',...(cfg.aiKey?{Authorization:'Bearer '+cfg.aiKey}:{})},body:JSON.stringify({model:cfg.aiModel,temperature:.7,messages:[{role:'system',content:`Je bent een ervaren Nederlandse radiopresentator bij ${cfg.station}. Schrijf uitsluitend de gesproken tekst: geen opmaak, geen lijstjes, geen regieaanwijzingen.`},{role:'user',content:prompt}]})});
  if(!r.ok)throw new Error('HTTP '+r.status);const j=await r.json();const t=j.choices?.[0]?.message?.content;if(!t)throw new Error('leeg antwoord');return t.trim()}
 const STY={short:['een kort bulletin van ongeveer 20 seconden',2],normal:['een normaal bulletin van ongeveer 45 seconden',4],long:['een uitgebreid bulletin van ongeveer 90 seconden',6],breaking:['een urgente breaking-news-melding van maximaal 20 seconden',1]};
-async function newsScript(style='normal'){const n=await getNews(),[desc,k]=STY[style]||STY.normal,it=n.items.slice(0,k);
+async function newsScript(style='normal'){const n=await getNews(),[desc,k]=STY[style]||STY.normal,it=n.items.slice(0,k); if(!it.length)return 'Er is op dit moment geen nieuwsbericht beschikbaar.';
  if(aiOn()){try{return await ai(`Schrijf ${desc} op basis van deze koppen:\n${it.map(i=>'- '+i.t+(i.d?' ('+i.d+')':'')).join('\n')}\nBegin met "${greet()}".`)}catch(e){toast('AI mislukt ('+e.message+') — sjabloon gebruikt')}}
  if(style==='breaking')return`Even onderbreken wij ons programma voor breaking news. ${it[0].t}. ${it[0].d||''} Blijf luisteren naar ${cfg.station} voor meer informatie.`;
  return`${greet()}! Dit is het laatste nieuws van vandaag. ${it.map((i,x)=>(x===it.length-1&&it.length>1?'Tot slot: ':'')+i.t+'. '+(style==='long'?i.d+' ':'')).join('')}Dat was het nieuws.`}
@@ -416,7 +444,7 @@ async function getWx(force){if(WX&&!force&&Date.now()-wxAt<6e5)return WX;await g
 async function weatherScript(){const j=await getWx(),c=j.current,d=j.daily,r=Math.round;const t=wc(c.weather_code)[0].toLowerCase(),t0=wc(d.weather_code[0])[0].toLowerCase(),t1=wc(d.weather_code[1])[0].toLowerCase();
  const fb=`En dan het weer. In ${cfg.city} is het momenteel ${r(c.temperature_2m)} graden en ${t}. Het voelt aan als ${r(c.apparent_temperature)} graden. De wind komt uit het ${dirOf(c.wind_direction_10m)} met ${r(c.wind_speed_10m)} kilometer per uur. Vandaag wordt het maximaal ${r(d.temperature_2m_max[0])} graden, ${t0}${d.precipitation_probability_max[0]>=40?' met kans op regen ('+d.precipitation_probability_max[0]+' procent)':''}. Morgen wordt het ${t1} bij ${r(d.temperature_2m_min[1])} tot ${r(d.temperature_2m_max[1])} graden.`;
  if(aiOn()){try{return await ai('Schrijf een kort weerbericht (ca. 25 seconden) voor de regio '+cfg.city+' op basis van deze gegevens: '+fb)}catch(e){toast('AI mislukt — sjabloon gebruikt')}}return fb}
-const DEMO_TR=[{road:'A7',text:'Drachten richting Groningen: 4 kilometer file door een ongeval'},{road:'A32',text:'Leeuwarden richting Meppel: tijdelijk één rijstrook dicht, vertraging van 10 minuten'},{road:'A6',text:'Lelystad richting Emmeloord: stroef verkeer door werkzaamheden'},{road:'A12',text:'Utrecht richting Arnhem: file van 6 kilometer'}];
+const DEMO_TR=[];
 async function getTraffic(){if(cfg.trafficUrl){try{const j=await(await fetch(cfg.trafficUrl)).json();const a=Array.isArray(j)?j:j.items||[];return{src:'API',items:a.map(i=>({road:i.road||i.weg||'',text:i.text||i.description||i.omschrijving||''}))}}catch{toast('Verkeers-API niet bereikbaar — demo-data gebruikt')}}return{src:'DEMO',items:DEMO_TR}}
 async function trafficScript(){const t=await getTraffic();if(!t.items.length)return`Dan het verkeer. Er zijn op dit moment geen meldingen voor ${cfg.region}.`;
  const fb=`Dan het verkeer. In ${cfg.region} zijn momenteel ${t.items.length===1?'een melding':t.items.length+' meldingen'}. ${t.items.slice(0,4).map(i=>(i.road?'Op de '+i.road+': ':'')+i.text+'.').join(' ')} Rijd voorzichtig.`;
@@ -426,13 +454,13 @@ const outro=()=>`Dat was het voor nu. Blijf luisteren naar ${cfg.station}. Tot z
 let hourSel={intro:1,news:1,weather:1,traffic:1,outro:1};
 async function hourScript(){const p=[];if(hourSel.intro)p.push(intro());if(hourSel.news)p.push(await newsScript('normal'));if(hourSel.weather){try{p.push(await weatherScript())}catch(e){toast('Weer: '+e.message)}}if(hourSel.traffic)p.push(await trafficScript());if(hourSel.outro)p.push(outro());return p.join('\n\n')}
 let ttsSrc=null;
-async function speak(text){if(!text.trim())return toast('Geen tekst om voor te lezen');stopSpeak(true);setDuck(true);logEv('Voorgelezen: '+text.slice(0,40)+'…');
+async function speak(text){if(!text.trim())return toast('Geen tekst om voor te lezen');stopSpeak(true);setDuck(true);if(!np.playing)startBgLoop();logEv('Voorgelezen: '+text.slice(0,40)+'…');
  if(cfg.ttsUrl){try{ensureCtx();const r=await fetch(cfg.ttsUrl,{method:'POST',headers:{'Content-Type':'application/json',...(cfg.ttsKey?{Authorization:'Bearer '+cfg.ttsKey}:{})},body:JSON.stringify({text,voice:cfg.voice,language:'nl'})});if(!r.ok)throw new Error('HTTP '+r.status);
-   const blob=await r.blob();window.lastTts=blob;const b=await ctx.decodeAudioData(await blob.arrayBuffer());ttsSrc=ctx.createBufferSource();ttsSrc.buffer=b;ttsSrc.connect(bus.tts);ttsSrc.onended=()=>{setDuck(false);ttsSrc=null;paint()};ttsSrc.start();return}
+   const blob=await r.blob();window.lastTts=blob;const b=await ctx.decodeAudioData(await blob.arrayBuffer());ttsSrc=ctx.createBufferSource();ttsSrc.buffer=b;ttsSrc.connect(bus.tts);ttsSrc.onended=()=>{setDuck(false);ttsSrc=null;stopBgLoop();paint()};ttsSrc.start();return}
   catch(e){toast('TTS-API mislukt ('+e.message+') — browserstem gebruikt')}}
  const u=new SpeechSynthesisUtterance(text);u.lang='nl-NL';u.rate=cfg.rate;u.volume=M.mute.tts?0:M.tts*(M.mute.master?0:1);const v=speechSynthesis.getVoices().find(x=>x.name===cfg.voice)||speechSynthesis.getVoices().find(x=>x.lang?.startsWith('nl'));if(v)u.voice=v;
- u.onend=u.onerror=()=>{setDuck(false)};speechSynthesis.speak(u)}
-function stopSpeak(quiet){speechSynthesis.cancel();try{ttsSrc?.stop()}catch{}ttsSrc=null;if(!quiet)setDuck(false)}
+ u.onend=u.onerror=()=>{setDuck(false);stopBgLoop()};speechSynthesis.speak(u)}
+function stopSpeak(quiet){speechSynthesis.cancel();try{ttsSrc?.stop()}catch{}ttsSrc=null;stopBgLoop();if(!quiet)setDuck(false)}
 function setScript(t){$$('.script').forEach(x=>x.value=t)}
 const getScript=()=>$('.script')?.value||'';
 async function run(label,fn,speakIt){toast('⏳ '+label+'…');try{const t=await fn();setScript(t);logEv(label);if(speakIt)speak(t)}catch(e){toast('Mislukt: '+e.message)}}
@@ -442,7 +470,7 @@ function schedTick(){const n=new Date();if(n.getSeconds()!==0)return;const stamp
  if(cfg.jingleEvery&&n.getMinutes()%cfg.jingleEvery===0){SCHED_LAST=stamp;playSound(cfg.jingleId)}}
 
 /* ---------- UI-componenten ---------- */
-const NAV=[['studio','🎛️','Studio'],['dashboard','📊','Dashboard'],['soundboard','🔊','Soundboard'],['spotify','🎧','Spotify'],['timer','⏱️','Timer'],['showclock','🕐','Show clock'],['playlist','📋','Wachtrij'],['ai','🤖','AI-uur'],['news','📰','Nieuws'],['weather','🌦️','Weer'],['traffic','🚗','Verkeer'],['settings','⚙️','Instellingen']];
+const NAV=[['studio','🎛️','Studio'],['dashboard','📊','Dashboard'],['soundboard','🔊','Soundboard'],['spotify','🎧','Spotify'],['showclock','🕐','Show clock'],['playlist','📋','Wachtrij'],['ai','🤖','AI-uur'],['news','📰','Nieuws'],['weather','🌦️','Weer'],['traffic','🚗','Verkeer'],['settings','⚙️','Instellingen']];
 function drawNav(){$('#nav').innerHTML=`<div class="brand">${cfg.logo?`<img src="${cfg.logo}" alt="">`:'<div class="lg">📻</div>'}<span>${esc(cfg.station)}</span></div>`+NAV.map(n=>`<a href="#/${n[0]}" data-r="${n[0]}"><span>${n[1]}</span>${n[2]}</a>`).join('')+'<div class="sp"></div><a href="#/obs" data-r="obs"><span>📺</span>OBS-modus</a>'}
 const cNow=()=>`<section class="card np"><div class="cover-wrap"><div class="ring"></div><img class="cover" data-cover alt="Albumcover"></div><div>
 <span class="pill" data-f="npflag"><i class="dot"></i>NOW PLAYING</span><h2 data-f="title"></h2><p class="art" data-f="artist"></p><p class="mu" data-f="album"></p>
@@ -465,14 +493,14 @@ const cMic=()=>`<section class="card"><h3>MICROFOON</h3><div class="row sb"><spa
 <label class="fld ck"><input type="checkbox" data-in="micmon" ${micMon?'checked':''}><span>Meeluisteren via speakers (kans op echo — gebruik een koptelefoon)</span></label>
 <p class="note">🔒 De browser vraagt toestemming voor de microfoon. Zonder toestemming werkt deze module niet.</p></section>`;
 const cViz=()=>`<section class="card"><div class="row sb"><h3>VISUALIZER</h3><span class="row">${[['spectrum','Spectrum'],['wave','Waveform'],['eq','Equalizer'],['vu','VU'],['bass','Bass']].map(([m,l])=>`<button class="btn sm ${cfg.viz===m?'on':''}" data-act="viz" data-m="${m}">${l}</button>`).join('')}</span></div><canvas class="viz" data-viz></canvas>
-<p class="note">Demo-muziek en soundboard worden live geanalyseerd. Spotify-audio is DRM-beveiligd, dus daar is de visualizer een simulatie.</p></section>`;
+<p class="note">Spotify-audio is DRM-beveiligd, dus de visualizer gebruikt een visuele simulatie.</p></section>`;
 const cSB=(n,full)=>{const list=sounds.filter(s=>s.bank===curBank).slice(0,n||99);return`<section class="card"><div class="row sb"><h3>SOUNDBOARD</h3><span class="row">${banks.map((b,i)=>`<button class="btn sm ${curBank===i?'on':''}" data-act="bank" data-i="${i}">${esc(b)}</button>`).join('')}${full?`<button class="btn sm" data-act="addbank">+ Pagina</button><button class="btn sm pri" data-act="upl">+ Sound</button><input type="file" id="fileIn" accept="audio/*,.wav,.mp3,.ogg" multiple hidden data-file>`:''}</span></div>
 <div class="pads">${list.map((s,i)=>`<button class="pad ${act[s.id]?'on':''}" style="--c:${s.color}" data-act="pad" data-id="${s.id}"><span class="ic">${esc(s.icon)}</span><b>${esc(s.name)}</b><kbd>${esc(s.key?kn(s.key):i<9?String(i+1):'')}</kbd><canvas data-wv="${s.id}"></canvas>${full?`<span class="ed" data-act="sedit" data-id="${s.id}">✎</span>`:''}</button>`).join('')||'<p class="mu">Leeg — sleep hier audiobestanden naartoe.</p>'}</div>
 ${full?'<div class="drop">Sleep WAV / MP3 / OGG hierheen om eigen sounds toe te voegen (blijven lokaal in je browser).</div>':''}</section>`};
-const cQueue=full=>`<section class="card"><div class="row sb"><h3>WACHTRIJ</h3><button class="btn sm" data-act="next">⏭ Skip</button></div>
-${np.src==='spotify'?'<div class="warnbox">Spotify is de bron: de wachtrij van Spotify zelf wordt door Spotify beheerd. Deze lijst hoort bij de demo-bron.</div>':''}
-${Q.slice(0,full?99:4).map((t,i)=>`<div class="qi ${i===0?'first':''}" draggable="true" data-i="${i}"><img src="${cover(t.artist+t.title)}" alt=""><div class="t"><b>${esc(t.title)}</b><span class="mu">${esc(t.artist)}</span></div><span class="tag">${i===0?'NU':i===1?'VOLGENDE':i===2?'DAARNA':fmt(t.dur)}</span>${full&&i>0?`<button class="btn sm" data-act="qdel" data-i="${i}">✕</button>`:''}</div>`).join('')}
-${full?`<div class="row" style="margin-top:12px"><input type="text" id="qa" placeholder="Artiest" style="flex:1"><input type="text" id="qt" placeholder="Titel" style="flex:1"><input type="text" id="qd" placeholder="3:30" style="max-width:80px"><button class="btn pri" data-act="qadd">+ Toevoegen</button></div><p class="note">Sleep nummers om de volgorde te wijzigen.</p>`:''}</section>`;
+const cQueue=full=>`<section class="card"><div class="row sb"><h3>SPOTIFY-WACHTRIJ</h3><button class="btn sm" data-act="spqrefresh">↻ Vernieuwen</button></div>
+${!SP.tok?'<div class="warnbox">Koppel Spotify om je echte Spotify-wachtrij te zien.</div>':''}
+${Q.slice(0,full?99:6).map((t,i)=>`<div class="qi ${i===0?'first':''}"><img src="${esc(t.cover||cover(t.artist+t.title))}" alt=""><div class="t"><b>${esc(t.title)}</b><span class="mu">${esc(t.artist)}</span></div><span class="tag">${i===0?'VOLGENDE':fmt(t.dur)}</span></div>`).join('')||'<p class="mu">Geen nummers in de Spotify-wachtrij.</p>'}
+<p class="note">De wachtrij wordt volledig door Spotify beheerd. Demo-nummers en lokale demo-wachtrijen zijn verwijderd.</p></section>`;
 const cScript=()=>`<section class="card"><h3>RADIOSCRIPT</h3><textarea class="script" placeholder="Hier verschijnt het script. Je kunt het aanpassen voordat je het laat voorlezen." spellcheck="true"></textarea>
 <div class="row" style="margin-top:12px"><button class="btn pri" data-act="speak">🔊 Voorlezen</button><button class="btn" data-act="stopspeak">⏹ Stop</button><button class="btn" data-act="copy">Kopiëren</button><button class="btn" data-act="savetxt">Opslaan (.txt)</button>${cfg.ttsUrl?'<button class="btn" data-act="saveaudio">Audio opslaan</button>':''}</div>
 <p class="note">${cfg.ttsUrl?'Spraak via je TTS-API.':'Spraak via de stem van je browser (Instellingen → stem). Koppel een TTS-API om audiobestanden op te slaan.'} ${aiOn()?'AI: aan':'AI: sjabloon-modus (geen AI-sleutel ingesteld)'}</p></section>`;
@@ -488,18 +516,17 @@ const cJing=()=>`<section class="card"><h3>EXTRA’S</h3><div class="row"><butto
 
 /* ---------- pagina's ---------- */
 const V={
-studio:()=>`<div class="g"><div class="s8">${cNow()}</div><div class="s4">${cTimer()}</div><div class="s8">${cSB(8)}</div><div class="s4">${cStatus()}</div><div class="s6">${cViz()}</div><div class="s6">${cMixer()}</div><div class="s4">${cMic()}</div><div class="s4">${cQueue(false)}</div><div class="s4">${cStream()}</div><div class="s4">${cQuick()}</div><div class="s8">${cScript()}</div></div>`,
-dashboard:()=>`<div class="g"><div class="s7">${cNow()}</div><div class="s5">${cStatus()}</div><div class="s5">${cTimer()}</div><div class="s7">${cShow()}</div><div class="s6">${cQueue(false)}</div><div class="s6">${cLog()}</div></div>`,
+studio:()=>`<div class="g"><div class="s8">${cNow()}</div><div class="s4">${cTimer()}</div><div class="s8">${cSB(8)}</div><div class="s4">${cStatus()}</div><div class="s6">${cViz()}</div><div class="s6">${cMixer()}</div><div class="s4">${cMic()}</div><div class="s4">${cQueue(false)}</div><div class="s4">${cQuick()}</div><div class="s8">${cScript()}</div></div>`,
+dashboard:()=>`<div class="g"><div class="s7">${cNow()}</div><div class="s5">${cStatus()}</div><div class="s7">${cShow()}</div><div class="s6">${cQueue(false)}</div><div class="s6">${cLog()}</div></div>`, 
 soundboard:()=>`<div class="g"><div class="s12">${cSB(0,true)}</div><div class="s6">${cMixer()}</div><div class="s6">${cJing()}</div></div>`,
 spotify:()=>{const ok=!!SP.tok;return`<div class="g"><div class="s7">${cNow()}</div><div class="s5"><section class="card"><h3>SPOTIFY-KOPPELING</h3>
 ${!cfg.spClient?'<div class="warnbox">Nog geen Client ID. Maak een app op developer.spotify.com/dashboard en vul het Client ID in bij <a href="#/settings">Instellingen</a>. Redirect URI om in te vullen: <b class="mono">'+esc(spRedirect())+'</b></div>':''}
 <div class="row"><span class="pill ${ok&&SP.dev?'ok':ok?'warn':'bad'}"><i class="dot"></i>${ok?(SP.dev?'Verbonden':'Verbinden…'):'Niet ingelogd'}</span>${SP.user?`<span class="mu">${esc(SP.user.display_name||SP.user.id)} · ${esc(SP.user.product||'')}</span>`:''}</div>
 ${SP.user&&SP.user.product&&SP.user.product!=='premium'?'<div class="warnbox" style="margin-top:12px">Web Playback SDK werkt alleen met Spotify Premium.</div>':''}${SP.err?`<p class="note">Laatste fout: ${esc(SP.err)}</p>`:''}
 <div class="row" style="margin-top:14px">${ok?'<button class="btn" data-act="splogout">Uitloggen</button>':'<button class="btn pri" data-act="splogin">Inloggen met Spotify</button>'}
-<button class="btn ${np.src==='demo'?'on':''}" data-act="src" data-s="demo">Bron: Demo</button><button class="btn ${np.src==='spotify'?'on':''}" data-act="src" data-s="spotify">Bron: Spotify</button></div></section></div>
+<button class="btn on">Bron: Spotify</button></div></section></div>
 <div class="s12"><section class="card"><h3>SPOTIFY-LINK AFSPELEN OF IN WACHTRIJ ZETTEN</h3><div class="row"><input type="text" id="splink" placeholder="https://open.spotify.com/playlist/… of /track/…" style="flex:1;min-width:220px"><button class="btn pri" data-act="splay1">▶ Afspelen</button><button class="btn" data-act="spq">+ Wachtrij</button></div></section></div><div class="s6">${cViz()}</div><div class="s6">${cRecent()}</div></div>`},
-timer:()=>`<div class="g"><div class="s8">${cTimer()}</div><div class="s4">${cStatus()}</div><div class="s12">${cShow()}</div></div>`,
-showclock:()=>`<div class="g"><div class="s7">${cShow()}</div><div class="s5">${cTimer()}</div></div>`,
+showclock:()=>`<div class="g"><div class="s12">${cShow()}</div></div>`,
 playlist:()=>`<div class="g"><div class="s7">${cQueue(true)}</div><div class="s5">${cRecent()}</div></div>`,
 ai:()=>`<div class="g"><div class="s5"><section class="card"><h3>AUTOMATISCH RADIO-UUR</h3><div class="flow">${[['intro','Intro'],['news','Nieuws'],['weather','Weer'],['traffic','Verkeer'],['outro','Afsluiting']].map(([k,l],i)=>`${i?'<span class="mu">↓</span>':''}<button class="btn sm ${hourSel[k]?'on':''}" data-act="hsel" data-k="${k}">${l}</button>`).join('')}</div>
 <div class="row" style="margin-top:16px"><button class="btn pri" data-act="ghour">🤖 GENEREER UUR</button><button class="btn" data-act="ghourspeak">Genereer + direct afspelen</button></div>
@@ -515,18 +542,22 @@ settings:()=>{const I=(k,l,ph='',t='text')=>`<label class="fld"><span>${l}</span
 <section class="card" style="margin-top:18px"><h3>STREAM</h3>${I('streamUrl','Stream-URL (Icecast/Shoutcast, bij voorkeur https)','https://…/stream')}${I('statusUrl','Luisteraars-URL (Icecast status-json.xml, optioneel)','https://…/status-json.xsl')}</section>
 <section class="card" style="margin-top:18px"><h3>LOCATIE</h3><div class="row"><div style="flex:1">${I('city','Plaats voor het weer')}</div><button class="btn" data-act="geo">Zoeken</button></div>${I('region','Regio voor verkeer')}${I('trafficUrl','Verkeers-API (JSON, optioneel)','https://…')}</section></div>
 <div class="s6"><section class="card"><h3>API’S</h3><div class="warnbox">Zonder eigen server staan sleutels alleen in <b>jouw</b> browser (localStorage). Zet ze nooit in de code of in GitHub. Wil je ze echt geheim houden? Gebruik een proxy (bijv. Cloudflare Worker) en vul die URL hieronder in.</div>
-<label class="fld"><span>Nieuwsbron</span><select data-in="cfg" data-k="newsMode"><option value="demo" ${cfg.newsMode==='demo'?'selected':''}>Demo</option><option value="rss" ${cfg.newsMode==='rss'?'selected':''}>RSS-feed (via rss2json)</option><option value="json" ${cfg.newsMode==='json'?'selected':''}>Eigen JSON-API</option></select></label>${I('newsFeed','Feed- of API-URL')}
+<label class="fld"><span>Nieuwsbron</span><select data-in="cfg" data-k="newsMode"><option value="rss" ${cfg.newsMode==='rss'?'selected':''}>RSS-feed (via rss2json)</option><option value="json" ${cfg.newsMode==='json'?'selected':''}>Eigen JSON-API</option></select></label>${I('newsFeed','Feed- of API-URL')}
 ${I('aiUrl','AI-endpoint (OpenAI-compatibel)')}${I('aiKey','AI API-sleutel','sk-…','password')}${I('aiModel','AI-model')}${I('ttsUrl','TTS-endpoint (POST {text, voice} → audio)','https://…')}${I('ttsKey','TTS-sleutel (optioneel)','','password')}<label class="fld"><span>Browserstem</span><select id="voiceSel" data-in="cfg" data-k="voice"></select></label>
 <label class="fld"><span>Spreeksnelheid</span><input type="range" min=".6" max="1.5" step=".05" value="${cfg.rate}" data-in="cfg" data-k="rate"></label></section>
+<section class="card" style="margin-top:18px"><h3>ACHTERGRONDMUZIEK</h3>
+<label class="fld ck"><input type="checkbox" data-in="cfg" data-k="bgAuto" ${cfg.bgAuto?'checked':''}><span>Automatische rustige achtergrond bij spreken zonder muziek</span></label>
+<label class="fld ck"><input type="checkbox" data-in="cfg" data-k="bgLoop" ${cfg.bgLoop?'checked':''}><span>Achtergrondnummer blijven herhalen tot het volgende nummer start</span></label>
+<label class="fld"><span>Achtergrondnummer (optioneel)</span><select data-in="cfg" data-k="bgMusicId"><option value="">Rustige ingebouwde achtergrond</option>${sounds.map(x=>`<option value="${esc(x.id)}" ${cfg.bgMusicId===x.id?'selected':''}>${esc(x.name)}</option>`).join('')}</select></label>
+<p class="note">Een gekozen eigen sound wordt als achtergrond in een lus afgespeeld. Zonder keuze gebruikt de studio een rustige ingebouwde achtergrond.</p></section>
 <section class="card" style="margin-top:18px"><h3>SPOTIFY</h3>${I('spClient','Client ID','van developer.spotify.com/dashboard')}${I('spRedirect','Redirect URI (leeg = automatisch)',spRedirect())}<p class="note">Voeg exact deze Redirect URI toe in je Spotify-app: <b class="mono">${esc(spRedirect())}</b></p></section></div>
 <div class="s6"><section class="card"><h3>SNELTOETSEN</h3><table>${Object.keys(HKN).map(a=>`<tr><td>${HKN[a]}</td><td><kbd>${kn(HK[a])}</kbd></td><td><button class="btn sm" data-act="hk" data-a="${a}">Wijzig</button></td></tr>`).join('')}</table><p class="note">Sounds: cijfers 1–9 = pads op de huidige pagina; per sound kun je een eigen toets (bijv. F1) instellen.</p><button class="btn sm" data-act="hkreset" style="margin-top:8px">Standaard herstellen</button></section></div>
-<div class="s6"><section class="card"><h3>OBS BROWSER SOURCES</h3><div class="list">${[['obs','Fullscreen'],['obs/now-playing','Now Playing'],['obs/timer','Timer'],['obs/overlay','Radio overlay']].map(([r,l])=>`<div class="li"><b style="min-width:110px">${l}</b><span class="mono mu" style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(base)}#/${r}</span><button class="btn sm" data-act="cp" data-t="${esc(base)}#/${r}">Kopieer</button></div>`).join('')}</div>
+<div class="s6"><section class="card"><h3>OBS BROWSER SOURCES</h3><div class="list">${[['obs','Fullscreen'],['obs/now-playing','Now Playing'],['obs/overlay','Radio overlay']].map(([r,l])=>`<div class="li"><b style="min-width:110px">${l}</b><span class="mono mu" style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(base)}#/${r}</span><button class="btn sm" data-act="cp" data-t="${esc(base)}#/${r}">Kopieer</button></div>`).join('')}</div>
 <p class="note">OBS-bronnen delen de instellingen en het nummer met je studio-pagina alleen binnen hetzelfde browserprofiel. Open de studio daarom als <b>Custom Browser Dock</b> in OBS (Docks → Aangepaste browserdocks), dan werkt alles gesynchroniseerd.</p></section>
 <section class="card" style="margin-top:18px"><h3>BACK-UP</h3><div class="row"><button class="btn" data-act="export">Exporteer instellingen</button><button class="btn" data-act="import">Importeer</button><button class="btn bad" data-act="wipe">Alles wissen</button></div><input type="file" id="impIn" accept=".json" hidden data-file="import"></section></div></div>`}
 };
 function vObs(r){const nx=`<div data-f="nextTrack"></div>`;
  if(r==='obs/now-playing')return`<div class="onp"><img data-cover alt=""><div style="min-width:0"><span class="pill" data-f="npflag"><i class="dot"></i>NOW PLAYING</span><h2 data-f="title"></h2><p class="art" data-f="artist"></p><div class="bar" style="margin-top:10px"><i data-prog></i></div></div></div>`;
- if(r==='obs/timer')return`<div class="ot"><div class="tbox" data-tbox><div class="tlabel" style="font-size:2.6vw" data-f="tlabel"></div><div class="digits" data-f="timer"></div></div></div>`;
  if(r==='obs/overlay')return`<div class="ovl">${cfg.logo?`<img class="lg" src="${cfg.logo}" alt="">`:''}<span class="pill" data-f="airpill"><i class="dot"></i><span data-f="airtxt2"></span></span><img class="c" data-cover alt=""><div class="t"><h2 data-f="title"></h2><p class="art" data-f="artist"></p></div><div style="text-align:right"><div class="ck" data-f="clock"></div><div class="mu" style="font-size:14px">Straks: <span data-f="nextTrack"></span></div></div></div>`;
  return`<div class="of"><div class="hd"><div class="row" style="gap:20px">${cfg.logo?`<img src="${cfg.logo}" alt="">`:''}<span class="stn" data-f="station"></span></div><span class="pill" data-f="airpill" style="font-size:2.4vh"><i class="dot"></i><span data-f="airtxt2"></span></span></div>
  <div class="mid"><div class="cover-wrap"><div class="ring"></div><img class="cover" data-cover alt=""></div><div><h2 data-f="title"></h2><p class="art" data-f="artist"></p><div class="time" style="font-size:2.4vh"><span data-f="elapsed"></span><div class="bar"><i data-prog></i></div><span data-f="remaining"></span></div><div class="tbox" data-tbox style="text-align:left"><div class="tlabel" data-f="tlabel"></div><div class="digits" data-f="timer"></div></div></div></div>
@@ -550,7 +581,7 @@ speechSynthesis?.addEventListener?.('voiceschanged',fillVoices);
 /* ---------- live paint (elke 250 ms + bij events) ---------- */
 function fields(){const n=new Date(),ss=showState(),cp=curPos(),nt=Q[1];return{
  station:cfg.station,title:np.title,artist:np.artist,album:np.album,elapsed:fmt(cp),remaining:'-'+fmt(np.dur-cp),playicon:np.playing?'⏸':'▶',npflag:np.playing?'NOW PLAYING':'PAUZE',
- srctag:np.src==='spotify'?'Bron: Spotify':'Bron: Demo',clock:n.toLocaleTimeString('nl-NL'),date:n.toLocaleDateString('nl-NL',{weekday:'long',day:'numeric',month:'long',year:'numeric'}),
+ srctag:'Bron: Spotify',clock:n.toLocaleTimeString('nl-NL'),date:n.toLocaleDateString('nl-NL',{weekday:'long',day:'numeric',month:'long',year:'numeric'}),
  timer:tDisp(),tlabel:tLabel(),tstartl:T.mode==='show'?(AIR.on?'⏹ Off air':'▶ Go live'):T.running?'⏸ Pauze':'▶ Start',
  nextItem:ss.next?ss.next.t+' '+ss.next.label:'—',nextIn:ss.next?'over '+fmt(ss.inMs):'',nextTrack:np.src==='spotify'?'Volgt via Spotify':nt?nt.artist+' – '+nt.title:'—',
  show:cfg.show,host:cfg.host,airtxt:AIR.on?'ON AIR':'OFF AIR',airtxt2:AIR.on?'ON AIR':'OFF AIR',stream:streamTxt(),streammsg:STR.msg,listeners:STR.listeners??'—',lsrc:STR.lsrc||'',
@@ -590,13 +621,12 @@ function draw(c,d,mode,ac,ac2){const dpr=devicePixelRatio||1,w=c.clientWidth,h=c
 
 /* ---------- events ---------- */
 const A={
- toggle:()=>P.toggle(),next:()=>P.next(),prev:()=>P.prev(),air,tstart:tToggle,treset:tReset,quickmute:()=>{M.mute.master=!M.mute.master;saveMix();applyMix();paint()},
+ toggle:()=>P.toggle(),next:()=>P.next(),prev:()=>P.prev(),air,quickmute:()=>{M.mute.master=!M.mute.master;saveMix();applyMix();paint()},
  fs:()=>document.fullscreenElement?document.exitFullscreen():document.documentElement.requestFullscreen?.(),
  theme:()=>{cfg.theme=cfg.theme==='dark'?'light':'dark';saveCfg();applyTheme()},
  seek:(el,e)=>{const r=el.getBoundingClientRect();P.seek(Math.max(0,Math.min(1,(e.clientX-r.left)/r.width)))},
  emergency,emgoff:()=>$('#emg').classList.remove('show'),
- tmode:el=>{normT();T.mode=el.dataset.m;T.running=false;if(T.mode==='countdown'||T.mode==='segment')T.ms=T.preset;else if(T.mode==='stopwatch')T.ms=0;saveT();render()},
- tadd:el=>tAdd(+el.dataset.v*1000),tset:()=>{const ms=parseHMS($('#tset').value);if(ms==null||ms<=0)return toast('Gebruik bijv. 3:42 of 1:24:37');T.ms=ms;T.preset=ms;T.at=Date.now();saveT();paint()},
+
  pad:el=>playSound(el.dataset.id),sedit:(el,e)=>{e.stopPropagation();editSound(el.dataset.id)},
  bank:el=>{curBank=+el.dataset.i;render()},addbank:()=>{const n=prompt('Naam van de nieuwe pagina:');if(n){banks.push(n.slice(0,16));LS.set('banks',banks);curBank=banks.length-1;render()}},upl:()=>$('#fileIn').click(),
  dclose:()=>$('#dlg').close(),
@@ -605,9 +635,8 @@ const A={
  viz:el=>{cfg.viz=el.dataset.m;saveCfg();$$('canvas[data-viz]').forEach(c=>c.dataset.mode='');$$('[data-act=viz]').forEach(b=>b.classList.toggle('on',b===el))},
  mute:el=>{const k=el.dataset.k;M.mute[k]=!M.mute[k];saveMix();applyMix();paint()},
  mic:micToggle,fadeout:()=>fadeTo(0,2500),fadein:()=>fadeTo(1,2500),stationid:()=>playSound('stationid'),
- introcd:()=>{normT();T.mode='segment';T.label='INTRO COUNTDOWN';T.ms=T.preset=10000;T.running=true;T.at=Date.now();saveT();toast('Intro-countdown gestart');render()},
- qdel:el=>{Q.splice(+el.dataset.i,1);saveQ();render()},
- qadd:()=>{const a=$('#qa').value.trim(),t=$('#qt').value.trim(),d=parseHMS($('#qd').value||'3:30');if(!a||!t)return toast('Vul artiest en titel in');Q.push(mkT([t,a,(d||210000)/1000,120]));saveQ();render()},
+
+ spqrefresh:()=>spQueue(),
  scadd:()=>{const t=$('#sct').value,l=$('#scl').value.trim().toUpperCase();if(!t||!l)return toast('Kies een tijd en een naam');SC.push({id:uid(),t,label:l});saveSC();render()},
  scdel:el=>{SC=SC.filter(x=>x.id!==el.dataset.id);saveSC();render()},screset:()=>{SC=SCD.map(x=>({...x,id:uid()}));saveSC();render()},
  gnews:el=>run('Nieuws',()=>newsScript(el.dataset.s||'normal')),gwx:()=>run('Weer',weatherScript),gtr:()=>run('Verkeer',trafficScript),ghour:()=>run('Radio-uur',hourScript),ghourspeak:()=>run('Radio-uur',hourScript,true),
@@ -617,7 +646,7 @@ const A={
  savetxt:()=>dl(new Blob([getScript()],{type:'text/plain'}),'radioscript-'+new Date().toISOString().slice(0,16).replace(/[:T]/g,'-')+'.txt'),
  saveaudio:async()=>{await speak(getScript());await sleep(1500);if(window.lastTts)dl(window.lastTts,'radio-audio.mp3');else toast('Geen audio beschikbaar')},
  wxr:()=>{loadWx(true)},geo:async()=>{cfg.geoFor='';try{await geo();WX=null;toast('Locatie: '+cfg.city)}catch(e){toast(e.message)}},
- splay:streamPlay,sstop:streamStop,splogin:spLogin,splogout:()=>spLogout(),src:el=>useSource(el.dataset.s),splay1:spPlayLink,spq:spAddQueue,
+ splay:streamPlay,sstop:streamStop,spqrefresh:spQueue,splogin:spLogin,splogout:()=>spLogout(),src:el=>useSource(el.dataset.s),splay1:spPlayLink,spq:spAddQueue,
  hk:el=>{capKey=el.dataset.a;toast('Druk nu op de nieuwe toets…')},hkreset:()=>{HK={...HKD};LS.set('hotkeys',HK);render()},
  cp:el=>navigator.clipboard.writeText(el.dataset.t).then(()=>toast('Gekopieerd')),
  export:()=>{const c={...cfg};delete c.aiKey;delete c.ttsKey;dl(new Blob([JSON.stringify({cfg:c,sounds,banks,SC,HK,M},null,1)],{type:'application/json'}),'radiostudio-instellingen.json')},
@@ -641,19 +670,15 @@ addEventListener('keydown',e=>{if(/INPUT|TEXTAREA|SELECT/.test(e.target.tagName)
  const s=sounds.find(x=>x.key&&x.key.toLowerCase()===k.toLowerCase());if(s){e.preventDefault();ensureCtx();playSound(s.id);return}
  if(/^[1-9]$/.test(k)){const s2=sounds.filter(x=>x.bank===curBank)[+k-1];if(s2){ensureCtx();playSound(s2.id)}}});
 addEventListener('keyup',e=>{if(e.key===' '&&!/INPUT|TEXTAREA|SELECT/.test(e.target.tagName))e.preventDefault()});
-const HKA={playpause:()=>P.toggle(),next:()=>P.next(),prev:()=>P.prev(),mic:micToggle,soundboard:()=>go('soundboard'),timer:tToggle,jingle:()=>playSound(cfg.jingleId||'jingle'),stop:stopAll,quickmute:A.quickmute,emergency};
-/* drag & drop: wachtrij + bestanden */
+const HKA={playpause:()=>P.toggle(),next:()=>P.next(),prev:()=>P.prev(),mic:micToggle,soundboard:()=>go('soundboard'),jingle:()=>playSound(cfg.jingleId||'jingle'),stop:stopAll,quickmute:A.quickmute,emergency};
+/* drag & drop: alleen bestanden voor soundboard */
 let dragI=null;
-document.addEventListener('dragstart',e=>{const q=e.target.closest?.('.qi');if(q){dragI=+q.dataset.i;e.dataTransfer.effectAllowed='move'}});
-document.addEventListener('dragover',e=>{e.preventDefault();if(e.dataTransfer?.types?.includes('Files'))document.body.classList.add('dragging');const q=e.target.closest?.('.qi');$$('.qi.over').forEach(x=>x.classList.remove('over'));if(q&&dragI!=null)q.classList.add('over')});
+document.addEventListener('dragover',e=>{if(e.dataTransfer?.types?.includes('Files'))document.body.classList.add('dragging')});
 document.addEventListener('dragleave',e=>{if(!e.relatedTarget)document.body.classList.remove('dragging')});
-document.addEventListener('drop',e=>{e.preventDefault();document.body.classList.remove('dragging');
- if(e.dataTransfer.files?.length&&route()==='soundboard'){addFiles(e.dataTransfer.files);return}
- const q=e.target.closest?.('.qi');if(dragI!=null&&q){const to=+q.dataset.i;if(to!==dragI){const[m]=Q.splice(dragI,1);Q.splice(to,0,m);saveQ();if(to===0||dragI===0)loadTrack(Q[0],np.playing);render()}}dragI=null});
-document.addEventListener('dragend',()=>{dragI=null;$$('.qi.over').forEach(x=>x.classList.remove('over'))});
+document.addEventListener('drop',e=>{e.preventDefault();document.body.classList.remove('dragging');if(e.dataTransfer.files?.length&&route()==='soundboard')addFiles(e.dataTransfer.files)});
 /* sync met OBS-pagina's / andere tabbladen (zelfde browserprofiel) */
 addEventListener('storage',e=>{if(!e.key?.startsWith('rs.')||e.newValue==null)return;const k=e.key.slice(3);let v;try{v=JSON.parse(e.newValue)}catch{return}
- if(k==='np'&&isObs())np=v;if(k==='timer')T=v;if(k==='air')AIR=v;if(k==='cfg'){cfg={...DEF,...v};applyTheme();if(isObs())render()}if(k==='mix')M=v;if(k==='queue')Q=v;if(k==='showclock')SC=v;paint()});
+ if(k==='np'&&isObs())np=v;if(k==='timer')T=v;if(k==='air')AIR=v;if(k==='cfg'){cfg={...DEF,...v};applyTheme();if(isObs())render()}if(k==='mix')M=v;if(k==='showclock')SC=v;paint()});
 addEventListener('hashchange',render);
 document.addEventListener('visibilitychange',()=>{if(!document.hidden)paint()});
 
@@ -667,12 +692,18 @@ document.addEventListener('visibilitychange',()=>{if(!document.hidden)paint()});
 (async function init(){applyTheme();drawNav();streamWire();
  const q=new URLSearchParams(location.search);if(q.get('code')&&SP.tok===null||q.get('code')){await spExchange(q.get('code'));history.replaceState(null,'',location.pathname+'#/spotify')}
  else if(q.get('error')){toast('Spotify: '+q.get('error'));history.replaceState(null,'',location.pathname+'#/spotify')}
- if(!isObs()){loadTrack(Q[0],false)}else{const s=LS.get('np',null);if(s)np=s;}
+ if(isObs()){const sn=LS.get('np',null);if(sn)np=sn;}
  render();
- if(SP.tok){spInitPlayer();spMe()}
+ if(SP.tok){spInitPlayer();spMe();spQueue()}
  listeners();setInterval(listeners,30000);probe();setInterval(probe,45000);
- setInterval(()=>{normT();if(!isObs()&&np.src==='demo'&&np.playing&&np.dur&&curPos()>=np.dur-50)demoNext();paint();schedTick()},250);
- setInterval(()=>{if(SP.player&&np.src==='spotify'&&np.playing)SP.player.getCurrentState().then(s=>{if(s){np.pos=s.position;np.ts=Date.now()}})},5000);
+ setInterval(()=>{normT();paint();schedTick()},250);
+ setInterval(()=>{if(SP.player&&np.src==='spotify')SP.player.getCurrentState().then(st=>{
+ if(!st)return;
+ np.pos=st.position;np.ts=Date.now();
+ if(!st.paused&&st.duration&&st.position>=st.duration-450){
+   spotifyManualStop=true;SP.player.pause().catch(()=>{});np.playing=false;np.pos=st.duration;syncNp();paint();
+ }
+});},250);
  vizLoop();
  if(isObs()&&LS.get('np',null))setInterval(()=>{const s=LS.get('np',null);if(s&&!SP.tok)np=s},1500);
 })();
