@@ -23,7 +23,7 @@
 <div class="card s5"><div class="section-title">Audio-engine</div><div class="cols"><div class="channel"><b>Spotify</b><input id="volMusic" type="range" min="0" max="1" step=".01" value=".8"></div><div class="channel"><b>Sounds</b><input id="volSounds" type="range" min="0" max="1" step=".01" value=".9"></div><div class="channel"><b>Bed</b><input id="volBed" type="range" min="0" max="1" step=".01" value=".16"></div><div class="channel"><b>Mic</b><input id="volMic" type="range" min="0" max="1" step=".01" value=".9"></div><div class="channel"><b>Master</b><input id="volMaster" type="range" min="0" max="1" step=".01" value=".9"></div></div><div style="margin-top:18px" class="meter"><i id="level"></i></div><p class="help">Alles gaat door dezelfde browser-audio-uitgang. OBS kan deze audio opnemen.</p></div>
 </div></section>
 
-<section class="page" id="spotifyPage"><div class="grid"><div class="card s5"><div class="section-title">Spotify koppelen</div><div id="spStatus" class="notice">Nog niet gekoppeld.</div><div class="field" style="margin-top:12px"><label>Spotify Client ID</label><input id="clientId" placeholder="Jouw Spotify Client ID"></div><button class="btn primary" id="loginSp" style="margin-top:10px">Inloggen met Spotify</button><p class="help">Voor Web Playback is een Spotify Premium-account nodig. De Client ID en redirect URI stel je in via je Spotify Developer Dashboard.</p></div>
+<section class="page" id="spotifyPage"><div class="grid"><div class="card s5"><div class="section-title">Spotify koppelen</div><div id="spStatus" class="notice">Nog niet gekoppeld.</div><div class="field" style="margin-top:12px"><label>Spotify Client ID</label><input id="clientId" placeholder="Jouw Spotify Client ID"></div><button class="btn primary" id="loginSp" style="margin-top:10px">Inloggen met Spotify</button><p class="help">Voor Web Playback is Spotify Premium nodig. Gebruik deze pagina via een webserver (bijvoorbeeld VS Code Live Server) en voeg de getoonde Redirect URI exact toe in je Spotify Developer Dashboard.</p></div>
 <div class="card s7"><div class="section-title">Spotify-lijst laden</div><div class="field"><label>Playlist URL</label><input id="playlistUrl" placeholder="https://open.spotify.com/playlist/..." /></div><div class="row" style="margin-top:10px"><button class="btn primary" id="loadPlaylist">Playlist importeren</button><button class="btn" id="clearQueue">Wachtrij leegmaken</button></div><p class="help">De nummers worden in de lokale wachtrij gezet. AutoDJ kan daarna de lijst automatisch afwerken.</p></div>
 <div class="card s12"><div class="row between"><div><div class="section-title">Spotify wachtrij</div><b id="queueCount">0 nummers</b></div><button class="btn small" id="refreshQueue">Spotify-status vernieuwen</button></div><div class="queue" id="spotifyQueue"></div></div></div></section>
 
@@ -68,12 +68,142 @@ function dataCover(t){return 'https://dummyimage.com/500x500/121827/ffffff&text=
 
 const SP={token:null,player:null,device:null};
 function parseSp(s){const m=String(s).match(/spotify\.com\/(?:intl-[^/]+\/)?(playlist|track)\/([A-Za-z0-9]+)/);return m?{type:m[1],id:m[2],uri:'spotify:'+m[1]+':'+m[2]}:null}
-function redirectUri(){return location.origin+location.pathname}
-async function loginSpotify(){if(!state.clientId)return toast('Vul eerst je Spotify Client ID in');const verifier=btoa(String.fromCharCode(...crypto.getRandomValues(new Uint8Array(32)))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=/g,'');localStorage.setItem('sp_verifier',verifier);const hash=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(verifier));const challenge=btoa(String.fromCharCode(...new Uint8Array(hash))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=/g,'');location.href='https://accounts.spotify.com/authorize?'+new URLSearchParams({client_id:state.clientId,response_type:'code',redirect_uri:redirectUri(),code_challenge_method:'S256',code_challenge:challenge,scope:'streaming user-read-playback-state user-modify-playback-state user-read-currently-playing user-read-private'})}
-async function exchange(){const code=new URLSearchParams(location.search).get('code');if(!code)return;try{const r=await fetch('https://accounts.spotify.com/api/token',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams({client_id:state.clientId,grant_type:'authorization_code',code,redirect_uri:redirectUri(),code_verifier:localStorage.getItem('sp_verifier')||''})});const j=await r.json();if(!j.access_token)throw Error(j.error_description||'Spotify login mislukt');SP.token=j.access_token;localStorage.setItem('sp_token',j.access_token);history.replaceState({},'',location.pathname+'#/spotify');toast('Spotify gekoppeld') }catch(e){toast(e.message)}}
+function redirectUri(){
+  // Spotify vereist een exact geregistreerde redirect URI. Gebruik bij een normale
+  // webserver de huidige URL; bij file:// is OAuth niet mogelijk.
+  if(location.protocol==='http:'||location.protocol==='https:') return location.origin+location.pathname;
+  return '';
+}
+function randomString(length=64){
+  const chars='ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~';
+  const bytes=new Uint8Array(length); crypto.getRandomValues(bytes);
+  return [...bytes].map(b=>chars[b%chars.length]).join('');
+}
+function base64Url(bytes){
+  return btoa(String.fromCharCode(...bytes)).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+}
+async function loginSpotify(){
+  if(!state.clientId)return toast('Vul eerst je Spotify Client ID in');
+  const redirect=redirectUri();
+  if(!redirect)return toast('Start deze pagina via een webserver, niet via file://');
+  const verifier=randomString(64);
+  const stateToken=randomString(32);
+  localStorage.setItem('sp_verifier',verifier);
+  localStorage.setItem('sp_oauth_state',stateToken);
+  localStorage.setItem('sp_redirect_uri',redirect);
+  const hash=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(verifier));
+  const challenge=base64Url(new Uint8Array(hash));
+  const scope=[
+    'streaming',
+    'user-read-email',
+    'user-read-private',
+    'user-read-playback-state',
+    'user-modify-playback-state',
+    'user-read-currently-playing',
+    'playlist-read-private',
+    'playlist-read-collaborative'
+  ].join(' ');
+  const auth=new URL('https://accounts.spotify.com/authorize');
+  auth.search=new URLSearchParams({
+    client_id:state.clientId,
+    response_type:'code',
+    redirect_uri:redirect,
+    state:stateToken,
+    code_challenge_method:'S256',
+    code_challenge:challenge,
+    scope
+  }).toString();
+  location.href=auth.toString();
+}
+async function exchange(){
+  const params=new URLSearchParams(location.search);
+  const code=params.get('code');
+  const oauthError=params.get('error');
+  if(oauthError){toast('Spotify login geannuleerd: '+oauthError);history.replaceState({},'',location.pathname+location.hash);return}
+  if(!code)return;
+  const savedState=localStorage.getItem('sp_oauth_state');
+  if(!savedState||params.get('state')!==savedState){toast('Spotify beveiligingscontrole mislukt');return}
+  const verifier=localStorage.getItem('sp_verifier');
+  const redirect=localStorage.getItem('sp_redirect_uri')||redirectUri();
+  if(!verifier||!redirect){toast('Spotify login kan niet worden voltooid');return}
+  try{
+    const r=await fetch('https://accounts.spotify.com/api/token',{
+      method:'POST',
+      headers:{'Content-Type':'application/x-www-form-urlencoded'},
+      body:new URLSearchParams({
+        client_id:state.clientId,
+        grant_type:'authorization_code',
+        code,
+        redirect_uri:redirect,
+        code_verifier:verifier
+      })
+    });
+    const j=await r.json();
+    if(!r.ok||!j.access_token)throw Error(j.error_description||'Spotify login mislukt');
+    SP.token=j.access_token;
+    SP.expiresAt=Date.now()+((j.expires_in||3600)*1000);
+    SP.refreshToken=j.refresh_token||localStorage.getItem('sp_refresh_token');
+    localStorage.setItem('sp_token',j.access_token);
+    localStorage.setItem('sp_expires_at',String(SP.expiresAt));
+    if(SP.refreshToken)localStorage.setItem('sp_refresh_token',SP.refreshToken);
+    localStorage.removeItem('sp_verifier');
+    localStorage.removeItem('sp_oauth_state');
+    history.replaceState({},'',location.pathname+'#/spotify');
+    toast('Spotify succesvol gekoppeld');
+  }catch(e){toast(e.message)}
+}
 SP.token=localStorage.getItem('sp_token');
-async function sp(path,method='GET',body){if(!SP.token)throw Error('Spotify is niet gekoppeld');const r=await fetch('https://api.spotify.com/v1'+path,{method,headers:{Authorization:'Bearer '+SP.token,...(body?{'Content-Type':'application/json'}:{})},body:body?JSON.stringify(body):undefined});if(r.status===401){SP.token=null;localStorage.removeItem('sp_token');throw Error('Spotify-sessie verlopen')}if(r.status===204)return null;if(!r.ok)throw Error('Spotify fout '+r.status);return r.json()}
-async function loadPlaylist(url){const p=parseSp(url);if(!p||p.type!=='playlist')return toast('Gebruik een Spotify playlist-link');try{const all=[];let next='/playlists/'+p.id+'/tracks?limit=100';while(next){const j=await sp(next);(j.items||[]).forEach(x=>{const t=x.track;if(t?.id)all.push({id:t.id,uri:t.uri,title:t.name,artist:t.artists?.map(a=>a.name).join(', ')||'—',cover:t.album?.images?.[0]?.url||dataCover(t.name),dur:t.duration_ms||0})});next=j.next?new URL(j.next).pathname+new URL(j.next).search:null}state.queue=all;state.played=0;save();render();toast(all.length+' Spotify-nummers geladen') }catch(e){toast(e.message)}}
+SP.refreshToken=localStorage.getItem('sp_refresh_token');
+SP.expiresAt=Number(localStorage.getItem('sp_expires_at')||0);
+async function refreshSpotifyToken(){
+  if(!SP.refreshToken)return false;
+  try{
+    const r=await fetch('https://accounts.spotify.com/api/token',{
+      method:'POST',
+      headers:{'Content-Type':'application/x-www-form-urlencoded'},
+      body:new URLSearchParams({
+        client_id:state.clientId,
+        grant_type:'refresh_token',
+        refresh_token:SP.refreshToken
+      })
+    });
+    const j=await r.json();
+    if(!r.ok||!j.access_token)throw Error(j.error_description||'Token vernieuwen mislukt');
+    SP.token=j.access_token;
+    SP.expiresAt=Date.now()+((j.expires_in||3600)*1000);
+    if(j.refresh_token){SP.refreshToken=j.refresh_token;localStorage.setItem('sp_refresh_token',SP.refreshToken)}
+    localStorage.setItem('sp_token',SP.token);
+    localStorage.setItem('sp_expires_at',String(SP.expiresAt));
+    return true;
+  }catch{return false}
+}
+async function sp(path,method='GET',body){
+  if(!SP.token)throw Error('Spotify is niet gekoppeld');
+  if(SP.expiresAt&&Date.now()>SP.expiresAt-60000){
+    if(!(await refreshSpotifyToken())){
+      SP.token=null;localStorage.removeItem('sp_token');throw Error('Spotify-sessie verlopen — log opnieuw in');
+    }
+  }
+  const r=await fetch('https://api.spotify.com/v1'+path,{
+    method,
+    headers:{Authorization:'Bearer '+SP.token,...(body?{'Content-Type':'application/json'}:{})},
+    body:body?JSON.stringify(body):undefined
+  });
+  if(r.status===401){
+    if(await refreshSpotifyToken()){
+      return sp(path,method,body);
+    }
+    SP.token=null;localStorage.removeItem('sp_token');throw Error('Spotify-sessie verlopen — log opnieuw in');
+  }
+  if(r.status===204)return null;
+  if(!r.ok){
+    let msg='Spotify fout '+r.status;
+    try{const j=await r.json();msg=j.error?.message||msg}catch{}
+    throw Error(msg);
+  }
+  return r.json();
+}
+async function loadPlaylist(url){const p=parseSp(url);if(!p||p.type!=='playlist')return toast('Gebruik een Spotify playlist-link');try{const all=[];let next='/playlists/'+p.id+'/items?limit=100&fields=items(track(id,uri,name,duration_ms,artists(name),album(images(url))),next,total)';while(next){const j=await sp(next);(j.items||[]).forEach(x=>{const t=x.item||x.track;if(t?.type==='track'&&t?.id)all.push({id:t.id,uri:t.uri,title:t.name,artist:t.artists?.map(a=>a.name).join(', ')||'—',cover:t.album?.images?.[0]?.url||dataCover(t.name),dur:t.duration_ms||0})});next=j.next?new URL(j.next).pathname+new URL(j.next).search:null}state.queue=all;state.played=0;save();render();toast(all.length+' Spotify-nummers geladen') }catch(e){toast(e.message)}}
 async function ensurePlayer(){if(!SP.token)return toast('Log eerst in bij Spotify');audio();if(SP.player)return SP.player;if(!window.Spotify){await new Promise((res,rej)=>{window.onSpotifyWebPlaybackSDKReady=res;const s=document.createElement('script');s.src='https://sdk.scdn.co/spotify-player.js';s.onerror=rej;document.head.appendChild(s)})}return new Promise(res=>{const p=new Spotify.Player({name:state.station+' AutoDJ',getOAuthToken:cb=>cb(SP.token),volume:state.vol.music});SP.player=p;p.addListener('ready',d=>{SP.device=d.device_id;toast('Spotify speler klaar');res(p)});p.addListener('player_state_changed',s=>{if(!s?.track_window?.current_track)return;const t=s.track_window.current_track;state.current={id:t.id,title:t.name,artist:t.artists.map(a=>a.name).join(', '),cover:t.album?.images?.[0]?.url||dataCover(t.name),dur:s.duration,pos:s.position,playing:!s.paused,ts:Date.now()};save();render()});p.connect()})}
 async function playTrack(track){try{const p=await ensurePlayer();if(!p)return;await sp('/me/player/play?device_id='+encodeURIComponent(SP.device), 'PUT',{uris:[track.uri]});state.current={...track,pos:0,playing:true,ts:Date.now()};save();render()}catch(e){toast(e.message)}}
 async function playQueueIndex(i){if(!state.queue[i])return;state.played=i;await playTrack(state.queue[i])}
@@ -157,7 +287,7 @@ $('#bgOpacity').oninput=e=>{state.settings.overlayOpacity=+e.target.value;save()
 [['ovShowCover','ovShowCover'],['ovShowClock','ovShowClock'],['ovShowAir','ovShowAir'],['ovShowArtist','ovShowArtist'],['ovShowProgress','ovShowProgress'],['ovShowNext','ovShowNext']].forEach(([id,key])=>$('#'+id).onchange=e=>{state.settings[key]=e.target.checked;save();updateOverlayVariant()});
 $('#ovCustomLabel').oninput=e=>{state.settings.ovCustomLabel=e.target.value;save();updateOverlayVariant()};
 $('#previewOverlay').onclick=()=>window.open(overlayUrl('lower'),'_blank');
-$('#redirectText').textContent=redirectUri();$('#copyRedirect').onclick=()=>navigator.clipboard.writeText(redirectUri()).then(()=>toast('Redirect URI gekopieerd'));
+$('#redirectText').textContent=redirectUri()||'Niet beschikbaar bij file://. Start de HTML via een webserver, bijvoorbeeld http://127.0.0.1:5500/';$('#copyRedirect').onclick=()=>navigator.clipboard.writeText(redirectUri()).then(()=>toast('Redirect URI gekopieerd'));
 setInterval(()=>{const n=new Date().toLocaleTimeString('nl-NL');$('#clock').textContent=n;$('#ovClock').textContent=n;renderProgress()},250);
 function renderProgress(){if(!state.current?.dur)return;const p=Math.min(1,(state.current.pos||0)/state.current.dur);$('#progress').style.width=(p*100)+'%';$('#elapsed').textContent=fmt(state.current.pos||0);$('#remaining').textContent='-'+fmt((state.current.dur||0)-(state.current.pos||0));}
 (function obsMode(){const q=new URLSearchParams(location.search);if(q.get('obs')){document.body.classList.add('obs');showPage('overlay')}else if(route()==='overlay')document.body.classList.add('obs')})();
