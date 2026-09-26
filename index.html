@@ -203,73 +203,102 @@ async function sp(path,method='GET',body){
   }
   return r.json();
 }
-async function loadPlaylist(url){const p=parseSp(url);if(!p||p.type!=='playlist')return toast('Gebruik een Spotify playlist-link');try{const all=[];let next='/playlists/'+p.id+'/items?limit=100&fields=items(track(id,uri,name,duration_ms,artists(name),album(images(url))),next,total)';while(next){const j=await sp(next);(j.items||[]).forEach(x=>{const t=x.item||x.track;if(t?.type==='track'&&t?.id)all.push({id:t.id,uri:t.uri,title:t.name,artist:t.artists?.map(a=>a.name).join(', ')||'—',cover:t.album?.images?.[0]?.url||dataCover(t.name),dur:t.duration_ms||0})});next=j.next?new URL(j.next).pathname+new URL(j.next).search:null}state.queue=all;state.played=0;save();render();toast(all.length+' Spotify-nummers geladen') }catch(e){toast(e.message)}}
-async function ensurePlayer(){if(!SP.token)return toast('Log eerst in bij Spotify');audio();if(SP.player)return SP.player;if(!window.Spotify){await new Promise((res,rej)=>{window.onSpotifyWebPlaybackSDKReady=res;const s=document.createElement('script');s.src='https://sdk.scdn.co/spotify-player.js';s.onerror=rej;document.head.appendChild(s)})}return new Promise(res=>{const p=new Spotify.Player({name:state.station+' AutoDJ',getOAuthToken:cb=>cb(SP.token),volume:state.vol.music});SP.player=p;p.addListener('ready',d=>{SP.device=d.device_id;toast('Spotify speler klaar');res(p)});p.addListener('player_state_changed',s=>{if(!s?.track_window?.current_track)return;const t=s.track_window.current_track;state.current={id:t.id,title:t.name,artist:t.artists.map(a=>a.name).join(', '),cover:t.album?.images?.[0]?.url||dataCover(t.name),dur:s.duration,pos:s.position,playing:!s.paused,ts:Date.now()};save();render()});p.connect()})}
-async function playTrack(track){try{const p=await ensurePlayer();if(!p)return;await sp('/me/player/play?device_id='+encodeURIComponent(SP.device), 'PUT',{uris:[track.uri]});state.current={...track,pos:0,playing:true,ts:Date.now()};save();render()}catch(e){toast(e.message)}}
-async function playQueueIndex(i){if(!state.queue[i])return;state.played=i;await playTrack(state.queue[i])}
-async function nextTrack(){let i=state.current?state.queue.findIndex(x=>x.id===state.current.id):-1;i=i<0?state.played:i;let n=i+1;if(n>=state.queue.length){if(state.auto){state.auto=false;save();toast('Laatste nummer bereikt — AutoDJ gestopt')}return}state.played=n;await playTrack(state.queue[n]);if(state.jingleEvery&&state.played>0&&state.played%state.jingleEvery===0)playFirstSound()}
-async function togglePlay(){try{const p=await ensurePlayer();if(!p)return;await p.togglePlay()}catch(e){toast(e.message)}}
-async function stopPlayback(){try{if(SP.player)await SP.player.pause()}catch{}if(state.current)state.current.playing=false;save();render()}
-setInterval(async()=>{if(!SP.player)return;try{const s=await SP.player.getCurrentState();if(!s)return;if(state.current){state.current.pos=s.position;state.current.playing=!s.paused;state.current.ts=Date.now()}if(state.auto&&!s.paused&&s.duration-s.position<700){await nextTrack()}}catch{}renderProgress()},300);
-
-let buffers={};
-function openDb(){return new Promise((res,rej)=>{const r=indexedDB.open('radio-autodj-files',1);r.onupgradeneeded=()=>r.result.createObjectStore('audio');r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error)})}
-async function putFile(id,file){const db=await openDb();return new Promise((res,rej)=>{const tx=db.transaction('audio','readwrite');tx.objectStore('audio').put(file,id);tx.oncomplete=res;tx.onerror=()=>rej(tx.error)})}
-async function getFile(id){const db=await openDb();return new Promise((res,rej)=>{const r=db.transaction('audio').objectStore('audio').get(id);r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error)})}
-async function fileBuffer(id){if(buffers[id])return buffers[id];const f=await getFile(id);const b=await audio().decodeAudioData(await f.arrayBuffer());return buffers[id]=b}
-async function playSound(id){const s=state.sounds.find(x=>x.id===id);if(!s)return;try{const src=audio().createBufferSource(),g=audioCtx.createGain();src.buffer=await fileBuffer(id);g.gain.value=s.vol??1;src.connect(g).connect(soundBus);src.start()}catch(e){toast('Sound kan niet worden afgespeeld')}}
-function playFirstSound(){if(state.sounds.length)playSound(state.sounds[0].id)}
-async function addSounds(files){for(const f of files){if(!f.type.startsWith('audio/')&&!/\.(mp3|wav|ogg|m4a)$/i.test(f.name))continue;const id=uid();await putFile(id,f);state.sounds.push({id,name:f.name.replace(/\.[^.]+$/,'').slice(0,30),vol:1});}save();render();toast('Sound pack geladen')}
-
-let bedSource=null;
-async function startBed(){if(!state.bedAuto||bedSource)return;audio();try{let b;if(state.settings.bedId){b=await fileBuffer(state.settings.bedId)}else{const sr=audioCtx.sampleRate,d=12;b=audioCtx.createBuffer(2,sr*d,sr);for(let c=0;c<2;c++){const a=b.getChannelData(c);for(let i=0;i<a.length;i++){const t=i/sr;a[i]=(Math.sin(t*2*Math.PI*110)*.018+Math.sin(t*2*Math.PI*164.8)*.012)}}}bedSource=audioCtx.createBufferSource();bedSource.buffer=b;bedSource.loop=state.bedLoop;const g=audioCtx.createGain();g.gain.value=state.vol.bed*.16;bedSource.connect(g).connect(bedBus);bedSource.start()}catch(e){toast('Bed kon niet starten')}}
-function stopBed(){if(!bedSource)return;try{bedSource.stop()}catch{}bedSource=null}
-
-async function startMic(){try{audio();micStream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true}});micSource=audioCtx.createMediaStreamSource(micStream);micSource.connect(micBus);toast('Microfoon actief');$('#micToggle').textContent='Microfoon stoppen'}catch(e){toast('Microfoon niet beschikbaar')}}
-function stopMic(){micStream?.getTracks().forEach(t=>t.stop());micStream=null;micSource?.disconnect();micSource=null;$('#micToggle').textContent='Microfoon starten'}
-setInterval(()=>{if(!micAnalyser&&audioCtx){micAnalyser=audioCtx.createAnalyser();micAnalyser.fftSize=256;if(micSource)micSource.connect(micAnalyser)}if(micAnalyser&&micStream){const a=new Uint8Array(micAnalyser.fftSize);micAnalyser.getByteTimeDomainData(a);let s=0;for(const v of a){const n=(v-128)/128;s+=n*n}const level=Math.min(1,Math.sqrt(s/a.length)*4);$('#micLevel').style.width=(level*100)+'%';if(state.duck){const target=level>.045?.25:1;if(musicBus)musicBus.gain.setTargetAtTime(state.vol.music*target,audioCtx.currentTime,.08)}}},80);
-
-function buildSchedule(){const q=state.queue;if(!q.length)return toast('Laad eerst een Spotify-playlist');const start=$('#startTime').value||'20:00',end=$('#endTime').value||'23:00';const mins=t=>{const [h,m]=t.split(':').map(Number);return h*60+m};let a=mins(start),b=mins(end);if(b<=a)b+=1440;const out=[];let i=0;while(a<b&&i<q.length){out.push({time:String(Math.floor(a/60)%24).padStart(2,'0')+':'+String(Math.floor(a%60)).padStart(2,'0'),type:'MUZIEK',label:q[i].title,id:q[i].id});a+=Math.max(3,Math.round((q[i].dur||180000)/60000));i++;if(i%3===0&&a<b){out.push({time:String(Math.floor(a/60)%24).padStart(2,'0')+':'+String(Math.floor(a%60)).padStart(2,'0'),type:'JINGLE',label:state.sounds[0]?.name||'Jouw jingle',id:state.sounds[0]?.id||''});a+=1}}state.schedule=out;save();render();toast('Planning gemaakt')}
-
-function renderQueue(id){const e=$(id);if(!state.queue.length){e.innerHTML='<div class="empty">Nog geen Spotify-nummers. Importeer eerst een playlist.</div>';return}e.innerHTML=state.queue.map((t,i)=>`<div class="track ${state.current?.id===t.id?'current':''}"><img src="${esc(t.cover)}"><div><div class="name">${i+1}. ${esc(t.title)}</div><div class="artist">${esc(t.artist)}</div></div><button class="btn small" data-play="${i}">▶</button></div>`).join('');e.querySelectorAll('[data-play]').forEach(b=>b.onclick=()=>playQueueIndex(+b.dataset.play))}
-function renderSounds(){const e=$('#soundGrid');$('#soundCount').textContent=state.sounds.length+' sounds';if(!state.sounds.length){e.innerHTML='<div class="empty">Je soundboard is leeg. Upload je eigen sound pack.</div>';return}e.innerHTML=state.sounds.map(s=>`<button class="pad" data-sound="${s.id}"><div class="icon">🔊</div><b>${esc(s.name)}</b><span>klik om af te spelen</span></button>`).join('');e.querySelectorAll('[data-sound]').forEach(b=>b.onclick=()=>playSound(b.dataset.sound))}
-function renderSchedule(){const e=$('#scheduleList');if(!state.schedule.length){e.innerHTML='<div class="empty">Nog geen showplanning.</div>';return}e.innerHTML=state.schedule.map(x=>`<div class="slot"><b>${x.time}</b><div><div class="type">${x.type}</div>${esc(x.label)}</div><span class="muted">${x.type==='MUZIEK'?'Spotify':'Sound'}</span></div>`).join('')}
-const overlayDefs=[
- {key:'lower',name:'Now Playing onderbalk',desc:'Compacte onderbalk met cover, artiest, nummer en klok.'},
- {key:'full',name:'Fullscreen Now Playing',desc:'Grote centrale Now Playing-overlay voor uitzendingen.'},
- {key:'clock',name:'Grote klok',desc:'Alleen een grote transparante showklok.'},
- {key:'air',name:'ON AIR badge',desc:'Losse ON AIR-indicator die je overal kunt plaatsen.'},
- {key:'next',name:'Volgend nummer',desc:'Toont welk Spotify-nummer hierna komt.'},
- {key:'minimal',name:'Mini Now Playing',desc:'Zeer kleine balk voor een rustige layout.'}
-];
-function baseUrl(){return location.href.split('#')[0].split('?')[0]}
-function overlayUrl(key){return baseUrl()+'?obs='+key}
-function copyText(v){navigator.clipboard?.writeText(v).then(()=>toast('Overlay-link gekopieerd')).catch(()=>toast('Kopiëren niet toegestaan in deze browser'))}
-function renderOverlayHub(){const e=$('#overlayLinks');if(!e)return;e.innerHTML=overlayDefs.map(x=>`<div class="overlay-card"><h3>${x.name}</h3><p class="help">${x.desc}</p><div class="overlay-url"><input readonly value="${overlayUrl(x.key)}"><button class="btn small" data-copy="${x.key}">Kopieer</button><button class="btn small primary" data-open="${x.key}">Open</button></div></div>`).join('');e.querySelectorAll('[data-copy]').forEach(b=>b.onclick=()=>copyText(overlayUrl(b.dataset.copy)));e.querySelectorAll('[data-open]').forEach(b=>b.onclick=()=>window.open(overlayUrl(b.dataset.open),'_blank'))}
-function saveOverlaySettings(){save()}
-function renderOverlaySettings(){const st=state.settings||{};const bg=st.overlayBg||'';$('#bgPreview').style.backgroundColor=st.overlayBgColor||'#0b1020';$('#bgPreview').style.backgroundImage=bg?`url("${bg}")`:'none';$('#bgColor').value=st.overlayBgColor||'#0b1020';$('#bgOpacity').value=st.overlayOpacity??.72;$('#ovShowCover').checked=st.ovShowCover!==false;$('#ovShowClock').checked=st.ovShowClock!==false;$('#ovShowAir').checked=st.ovShowAir!==false;$('#ovShowArtist').checked=st.ovShowArtist!==false;$('#ovShowProgress').checked=st.ovShowProgress!==false;$('#ovShowNext').checked=!!st.ovShowNext;$('#ovCustomLabel').value=st.ovCustomLabel||'NU OP DE RADIO'}
-function updateOverlayVariant(){
- const q=new URLSearchParams(location.search),v=q.get('obs')||'lower',root=$('#overlayPage .obsvariant'),st=state.settings||{};
- if(!root)return; root.className='obsvariant obs-'+v;
- $('#obsBg').style.backgroundColor=st.overlayBgColor||'#0b1020'; $('#obsBg').style.backgroundImage=st.overlayBg?`url("${st.overlayBg}")`:'none'; $('#obsBg').style.opacity=String(st.overlayOpacity??.72);
- const cur=state.current||{}, next=state.queue[(state.queue.findIndex(x=>x.id===cur.id)+1)]||{};
- const cover=esc(cur.cover||dataCover('Radio')), title=esc(cur.title||'Geen nummer'), artist=esc(cur.artist||'—'), clock=$('#clock')?.textContent||'00:00:00', label=esc(st.ovCustomLabel||'NU OP DE RADIO');
- const progress=cur.dur?Math.min(100,((cur.pos||0)/cur.dur)*100):0;
- let html='';
- if(v==='clock') html=`<div class="obs-content"><div class="obs-clocktext">${clock}</div></div>`;
- else if(v==='air') html=`<div class="obs-content"><div class="airbadge">● ${state.air?'ON AIR':'OFF AIR'}</div></div>`;
- else if(v==='next') html=`<div class="obs-content"><div class="nextbox"><small>HIERNA OP DE RADIO</small><div style="font-size:25px;font-weight:800">${esc(next.title||'Geen volgend nummer')}</div><div class="muted">${esc(next.artist||'')}</div></div></div>`;
- else if(v==='minimal') html=`<div class="obs-content"><div class="minimal">${title} — ${artist}</div></div>`;
- else html=`<div class="obs-content"><div class="overlay-box"><img id="ovCover" src="${cover}" alt=""><div><div class="muted" id="ovLabel">${label}</div><h1 id="ovTitle">${title}</h1><div class="artist" id="ovArtist">${artist}</div><div id="ovProgress" class="bar" style="margin:10px 0 0;height:5px"><i style="width:${progress}%"></i></div><div id="ovClock" class="clock" style="margin-top:10px">${clock}</div></div></div></div>`;
- $('#obsContent').innerHTML=html;
- const coverEl=$('#ovCover'); if(coverEl)coverEl.style.display=st.ovShowCover===false?'none':'';
- const artistEl=$('#ovArtist'); if(artistEl)artistEl.style.display=st.ovShowArtist===false?'none':'';
- const clockEl=$('#ovClock'); if(clockEl)clockEl.style.display=st.ovShowClock===false?'none':'';
- const progressEl=$('#ovProgress'); if(progressEl)progressEl.style.display=st.ovShowProgress===false?'none':'';
+async function loadPlaylist(url){
+ const p=parseSp(url);
+ if(!p||p.type!=='playlist')return toast('Gebruik een Spotify playlist-link');
+ if(!SP.token)return toast('Koppel Spotify eerst — de playlist kan pas daarna worden geladen.');
+ try{
+   const all=[]; let next='/playlists/'+p.id+'/items?limit=100';
+   while(next){
+     const j=await sp(next);
+     (j.items||[]).forEach(x=>{
+       const t=x.item||x.track;
+       if(t?.type==='track'&&t.id){
+         all.push({
+           id:t.id,uri:t.uri,title:t.name,
+           artist:t.artists?.map(a=>a.name).join(', ')||'—',
+           cover:t.album?.images?.[0]?.url||dataCover(t.name),
+           dur:t.duration_ms||0
+         });
+       }
+     });
+     next=j.next?new URL(j.next).pathname+new URL(j.next).search:null;
+   }
+   state.queue=all;state.played=0;save();render();
+   toast(all.length+' Spotify-nummers geladen');
+ }catch(e){toast(e.message||'Playlist kon niet worden geladen')}
 }
 
 
-function render(){document.documentElement.style.setProperty('--accent',state.accent);$('#stationName').textContent=state.station;$('#stationInput').value=state.station;$('#clientId').value=state.clientId;$('#accentInput').value=state.accent;$('#airPill').textContent=state.air?'ON AIR':'OFF AIR';$('#airPill').classList.toggle('live',state.air);$('#autoState').textContent=state.auto?'AUTODJ ACTIEF':'HANDMATIG';$('#autoInfo').textContent=state.auto?'De uitzending wordt automatisch gedraaid.':'De AutoDJ staat uit.';$('#autoToggle').textContent=state.auto?'AutoDJ stoppen':'AutoDJ starten';$('#autoToggle2').textContent=state.auto?'AutoDJ stoppen':'AutoDJ starten';$('#nextTitle').textContent=state.queue[(state.queue.findIndex(x=>x.id===state.current?.id)+1)]?.title||'—';$('#nextArtist').textContent=state.queue[(state.queue.findIndex(x=>x.id===state.current?.id)+1)]?.artist||'—';$('#nowTitle').textContent=state.current?.title||'Geen nummer';$('#nowArtist').textContent=state.current?.artist||'—';$('#nowStatus').textContent=state.current?.playing?'SPEELT VIA SPOTIFY':'Klaar';const c=$('#dashCover');if(state.current?.cover){c.classList.remove('empty');c.innerHTML='';c.style.backgroundImage=`url("${state.current.cover}")`;c.style.backgroundSize='cover';c.style.backgroundPosition='center'}else{c.classList.add('empty');c.style.backgroundImage='none';c.textContent='♪'}$('#ovTitle').textContent=state.current?.title||'Geen nummer';$('#ovArtist').textContent=state.current?.artist||'—';$('#ovProgress').style.display=(state.settings?.ovShowProgress===false?'none':'block');$('#ovProgress i').style.width=(state.current?.dur?Math.min(100,((state.current.pos||0)/state.current.dur)*100):0)+'%';$('#ovCover').src=state.current?.cover||dataCover('Radio');$('#autoToggle').onclick=toggleAuto;$('#autoToggle2').onclick=toggleAuto;renderQueue('#dashQueue');renderQueue('#spotifyQueue');$('#queueCount').textContent=state.queue.length+' nummers';renderSounds();renderSchedule();renderOverlayHub();renderOverlaySettings();updateOverlayVariant();$('#bedAuto').checked=state.bedAuto;$('#bedLoop').checked=state.bedLoop;$('#ruleDuck').checked=state.duck;$('#jingleEvery').value=state.jingleEvery;$('#mixMusic').value=state.vol.music;$('#mixSounds').value=state.vol.sounds;$('#mixBed').value=state.vol.bed;$('#mixMic').value=state.vol.mic;$('#mixMaster').value=state.vol.master;$('#volMusic').value=state.vol.music;$('#volSounds').value=state.vol.sounds;$('#volBed').value=state.vol.bed;$('#volMic').value=state.vol.mic;$('#volMaster').value=state.vol.master;showPage(new URLSearchParams(location.search).get('obs')?'overlay':route())}
+function render(){
+ document.documentElement.style.setProperty('--accent',state.accent);
+ setText('#stationName',state.station);
+ setValue('#stationInput',state.station);
+ setValue('#clientId',state.clientId);
+ setValue('#accentInput',state.accent);
+
+ const air=$('#airPill');
+ if(air){air.textContent=state.air?'ON AIR':'OFF AIR';air.classList.toggle('live',state.air)}
+
+ setText('#autoState',state.auto?'AUTODJ ACTIEF':'HANDMATIG');
+ setText('#autoInfo',state.auto?'De uitzending wordt automatisch gedraaid.':'De AutoDJ staat uit.');
+ setText('#autoToggle',state.auto?'AutoDJ stoppen':'AutoDJ starten');
+ setText('#autoToggle2',state.auto?'AutoDJ stoppen':'AutoDJ starten');
+
+ const nextIndex=state.queue.findIndex(x=>x.id===state.current?.id)+1;
+ const next=state.queue[nextIndex];
+ setText('#nextTitle',next?.title||'—');
+ setText('#nextArtist',next?.artist||'—');
+ setText('#nowTitle',state.current?.title||'Geen nummer');
+ setText('#nowArtist',state.current?.artist||'—');
+ setText('#nowStatus',state.current?.playing?'SPEELT VIA SPOTIFY':'Klaar');
+
+ const c=$('#dashCover');
+ if(c){
+   if(state.current?.cover){
+     c.classList.remove('empty');c.innerHTML='';
+     c.style.backgroundImage=`url("${state.current.cover}")`;
+     c.style.backgroundSize='cover';c.style.backgroundPosition='center';
+   }else{
+     c.classList.add('empty');c.style.backgroundImage='none';c.textContent='♪';
+   }
+ }
+
+ renderQueue('#dashQueue');
+ renderQueue('#spotifyQueue');
+ setText('#queueCount',state.queue.length+' nummers');
+ renderSounds();
+ renderSchedule();
+ renderOverlayHub();
+
+ // Overlay settings only exist on the settings page.
+ if($('#bgPreview')) renderOverlaySettings();
+ updateOverlayVariant();
+
+ setChecked('#bedAuto',state.bedAuto);
+ setChecked('#bedLoop',state.bedLoop);
+ setChecked('#ruleDuck',state.duck);
+ setValue('#jingleEvery',state.jingleEvery);
+
+ [['#mixMusic',state.vol.music],['#mixSounds',state.vol.sounds],['#mixBed',state.vol.bed],
+  ['#mixMic',state.vol.mic],['#mixMaster',state.vol.master],
+  ['#volMusic',state.vol.music],['#volSounds',state.vol.sounds],['#volBed',state.vol.bed],
+  ['#volMic',state.vol.mic],['#volMaster',state.vol.master]].forEach(([s,v])=>setValue(s,v));
+
+ showPage(new URLSearchParams(location.search).get('obs')?'overlay':route());
+
+ // Spotify connection state is independent of the current page.
+ const spStatus=$('#spStatus');
+ if(spStatus){
+   if(SP.token){
+     spStatus.className='notice success';
+     spStatus.textContent='Spotify gekoppeld.';
+   }else{
+     spStatus.className='notice';
+     spStatus.textContent='Nog niet gekoppeld.';
+   }
+ }
+}
 function toggleAuto(){state.auto=!state.auto;save();if(state.auto){if(!state.current&&state.queue.length)playQueueIndex(0);startBed()}else stopBed();render()}
 $('#onairBtn').onclick=()=>{state.air=!state.air;save();render()};$('#playBtn').onclick=togglePlay;$('#nextBtn').onclick=nextTrack;$('#stopBtn').onclick=stopPlayback;$('#loginSp').onclick=loginSpotify;$('#loadPlaylist').onclick=()=>loadPlaylist($('#playlistUrl').value);$('#clearQueue').onclick=()=>{state.queue=[];state.current=null;save();render()};$('#refreshQueue').onclick=render;$('#autoToggle').onclick=toggleAuto;$('#autoToggle2').onclick=toggleAuto;$('#skipAuto').onclick=nextTrack;
 $('#soundFiles').onchange=e=>addSounds(e.target.files);$('#clearSounds').onclick=()=>{if(confirm('Alle eigen sounds verwijderen?')){state.sounds=[];save();render()}};
@@ -288,8 +317,12 @@ $('#bgOpacity').oninput=e=>{state.settings.overlayOpacity=+e.target.value;save()
 $('#ovCustomLabel').oninput=e=>{state.settings.ovCustomLabel=e.target.value;save();updateOverlayVariant()};
 $('#previewOverlay').onclick=()=>window.open(overlayUrl('lower'),'_blank');
 $('#redirectText').textContent=redirectUri()||'Niet beschikbaar bij file://. Start de HTML via een webserver, bijvoorbeeld http://127.0.0.1:5500/';$('#copyRedirect').onclick=()=>navigator.clipboard.writeText(redirectUri()).then(()=>toast('Redirect URI gekopieerd'));
-setInterval(()=>{const n=new Date().toLocaleTimeString('nl-NL');$('#clock').textContent=n;$('#ovClock').textContent=n;renderProgress()},250);
-function renderProgress(){if(!state.current?.dur)return;const p=Math.min(1,(state.current.pos||0)/state.current.dur);$('#progress').style.width=(p*100)+'%';$('#elapsed').textContent=fmt(state.current.pos||0);$('#remaining').textContent='-'+fmt((state.current.dur||0)-(state.current.pos||0));}
+setInterval(()=>{const n=new Date().toLocaleTimeString('nl-NL');setText('#clock',n);setText('#ovClock',n);renderProgress()},250);
+function renderProgress(){if(!state.current?.dur)return;const p=Math.min(1,(state.current.pos||0)/state.current.dur);const bar=$('#progress');if(bar)bar.style.width=(p*100)+'%';setText('#elapsed',fmt(state.current.pos||0));setText('#remaining','-'+fmt((state.current.dur||0)-(state.current.pos||0)));}
 (function obsMode(){const q=new URLSearchParams(location.search);if(q.get('obs')){document.body.classList.add('obs');showPage('overlay')}else if(route()==='overlay')document.body.classList.add('obs')})();
-(async()=>{await exchange();showPage(route());render();if(SP.token&&route()==='spotify')$('#spStatus').className='notice success',$('#spStatus').textContent='Spotify-token aanwezig. Start de Spotify speler door een nummer te kiezen.';})();
+(async()=>{
+ try{await exchange();}catch(e){toast(e.message||'Spotify login mislukt')}
+ showPage(route());
+ render();
+})();
 </script></body></html>
